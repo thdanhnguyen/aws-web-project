@@ -1,33 +1,74 @@
--- Dành cho việc khởi tạo Cơ sở dữ liệu 1 lần duy nhất
+DROP TABLE IF EXISTS invoice_items, invoices, transaction, transactions, product_details, products, customers, users, tenants CASCADE;
 
--- 1. Bảng lưu thông tin cửa hàng (Tenants)
-CREATE TABLE IF NOT EXISTS tenants (
+CREATE TABLE tenants (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Bảng lưu Sản phẩm
-CREATE TABLE IF NOT EXISTS products (
+
+CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  tenant_id VARCHAR(50) NOT NULL,
+  tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE customers (
+  id SERIAL PRIMARY KEY,
+  tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
+  email VARCHAR(100),
+  phone VARCHAR(20),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  sku_prefix VARCHAR(10), 
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE product_details (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
   price NUMERIC(10,2) NOT NULL,
   description TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  material VARCHAR(50) DEFAULT 'Cotton', 
+  origin VARCHAR(50) DEFAULT 'Vietnam'   
 );
 
--- 3. Bảng lưu Giao dịch thanh toán (POS)
-CREATE TABLE IF NOT EXISTS transactions (
+CREATE TABLE invoices (
   id SERIAL PRIMARY KEY,
-  tenant_id VARCHAR(50) NOT NULL,
-  customer_email VARCHAR(255),
+  tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
+  customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
   subtotal NUMERIC(10,2) NOT NULL,
   tax NUMERIC(10,2) NOT NULL,
-  total NUMERIC(10,2) NOT NULL,
-  items JSONB NOT NULL, -- Dùng JSONB chuẩn xịn của Postgres để lưu Giỏ hàng
+  total_amount NUMERIC(10,2) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- (Tùy chọn) Khởi tạo sẵn một cửa hàng mẫu để test
-INSERT INTO tenants (id, name) VALUES ('LUXURY-SHOP-01', 'Shop Xịn Xò Số 1') ON CONFLICT (id) DO NOTHING;
+CREATE TABLE invoice_items (
+  id SERIAL PRIMARY KEY,
+  invoice_id INTEGER REFERENCES invoices(id) ON DELETE CASCADE,
+  product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+  quantity INTEGER NOT NULL,
+  price_at_purchase NUMERIC(10,2) NOT NULL,
+  color VARCHAR(20),
+  size VARCHAR(10)
+);
+
+INSERT INTO tenants (id, name) VALUES ('LUXURY-SHOP-01', 'Shop Thời Trang Outfit');
+
+INSERT INTO products (id, tenant_id, name, sku_prefix) VALUES 
+(1, 'LUXURY-SHOP-01', 'Áo Hoodie Monochrome', 'HD-MC'),
+(2, 'LUXURY-SHOP-01', 'Quần Jean Slimfit', 'JN-SF'),
+(3, 'LUXURY-SHOP-01', 'Áo Polo Signature', 'PL-SG');
+
+INSERT INTO product_details (product_id, price, description, material) VALUES 
+(1, 105.50, 'Hoodie vải nỉ cao cấp, form rộng unisex', 'Fleece Cotton'),
+(2, 85.00, 'Quần jean co giãn, màu xám khói', 'Denim'),
+(3, 45.20, 'Áo polo thoáng khí, phong cách lịch lãm', 'Pique Cotton');
