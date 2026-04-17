@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+  font-family: 'Outfit', sans-serif;
+  color: #333333; /* Xám than mặc định */
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  /* [LEARN] Trắng ngà giúp dịu mắt và tạo cảm giác sang trọng (Minimalist Luxury) */
+  background-color: #FBFBF9; 
+}
+
+/* [LEARN] Tùy chỉnh thanh cuộn siêu mỏng để đồng bộ giao diện sạch */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5E5E5;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* [LEARN] Tạo lớp shadow mờ ảo để các thẻ nổi lên tinh tế */
+.shadow-soft {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-hover {
+  transition: all 0.3s ease;
+}
+.shadow-hover:hover {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}

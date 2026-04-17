@@ -1,59 +1,94 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { pool } from '../config/database'; 
-// import { sendReceiptEmail } from '../utils/mailer';
+import { sendReceiptEmail } from '../utils/mailer';
+import { AuthRequest } from '../middlewares/auth.middleware';
 
-export const createTransaction = async (req: Request, res: Response) => {
+export const createTransaction = async (req: AuthRequest, res: Response) => {
+  const client = await pool.connect();
   try {
     const currentTenantId = req.tenant_id;
     const { customer_email, items } = req.body;
 
-    if(!items || items.length === 0){
-      return res.status(400).json({error: 'Items are required'});
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: 'Items are required' });
     }
 
-    // Simulate Calculation (Subtotal, Tax, Total)
+    await client.query('BEGIN');
+
+    let customerRes = await client.query(
+      'SELECT id FROM customers WHERE email = $1 AND tenant_id = $2', 
+      [customer_email, currentTenantId]
+    );
+    let customerId;
+    if (customerRes.rowCount === 0) {
+      customerRes = await client.query(
+        'INSERT INTO customers (tenant_id, name, email) VALUES ($1, $2, $3) RETURNING id',
+        [currentTenantId, customer_email.split('@')[0], customer_email]
+      );
+    }
+    customerId = customerRes.rows[0].id;
+
     let subtotal = 0;
     const detailedItems = [];
     
-    // items is an array of { product_id, quantity, price }
-    for(const item of items){
-      const prodRes = await pool.query(
-        'SELECT name, price FROM products WHERE id = $1 AND tenant_id = $2', [item.product_id, currentTenantId]
+    for (const item of items) {
+      const prodRes = await client.query(
+        `SELECT p.name, pd.price 
+         FROM products p
+         JOIN product_details pd ON p.id = pd.product_id
+         WHERE p.id = $1 AND p.tenant_id = $2`, 
+        [item.product_id, currentTenantId]
       );
-      if(prodRes.rowCount == 0) throw new Error(`Product ${item.product_id} not found`);
+      if (prodRes.rowCount === 0) throw new Error(`Product ${item.product_id} not found`);
       
       const realProduct = prodRes.rows[0];
       const itemTotal = parseFloat(realProduct.price) * item.quantity;
       subtotal += itemTotal;
       detailedItems.push({
-        name: realProduct.name,
+        product_id: item.product_id,
         quantity: item.quantity,
-        unit_price: realProduct.price,
-        total: itemTotal
+        price_at_purchase: realProduct.price,
+        color: item.color,
+        size: item.size
       });
     }
 
-    const taxRate = 0.10
+    const taxRate = 0.10;
     const tax = subtotal * taxRate;
     const total = subtotal + tax;
 
-    // TODO: Save to database using `tenant_id` to isolate data
-    // INSERT INTO transactions (tenant_id, customer_email, subtotal, tax, total, ... ) 
+    const insertInvoiceRes = await client.query(
+      'INSERT INTO invoices (tenant_id, customer_id, subtotal, tax, total_amount) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [currentTenantId, customerId, subtotal, tax, total]
+    );
+    const invoiceId = insertInvoiceRes.rows[0].id;
 
-    // Simulate sending email
-    // if (customer_email) {
-    //   await sendReceiptEmail(customer_email, { subtotal, tax, total });
-    // }
-    const insertRes = await pool.query(
-      'INSERT INTO transaction (tenant_id, customer_email, subtotal, tax, total, items) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [currentTenantId, customer_email, subtotal, tax, total, JSON.stringify(detailedItems)]
-    )
+    for (const detailedItem of detailedItems) {
+      await client.query(
+        'INSERT INTO invoice_items (invoice_id, product_id, quantity, price_at_purchase, color, size) VALUES ($1, $2, $3, $4, $5, $6)',
+        [invoiceId, detailedItem.product_id, detailedItem.quantity, detailedItem.price_at_purchase, detailedItem.color, detailedItem.size]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    try {
+      await sendReceiptEmail(customer_email, { id: invoiceId, subtotal, tax, total });
+      console.log(`Email sent successfully to email: ${customer_email}`);
+    } catch (error) {
+      console.error("Failed to send email", error);
+    }
+
     return res.status(201).json({
       success: true,
-      message: 'Transaction completed successfully',
-      receipt: insertRes.rows[0],
+      message: 'Transaction completed successfully (Standard 3NF DB)',
+      receipt: { id: invoiceId },
     });
+
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to process transaction' });
+    await client.query('ROLLBACK');
+    return res.status(500).json({ error: 'Failed to process transaction (3NF)' });
+  } finally {
+    client.release();
   }
 };

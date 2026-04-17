@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../controllers/product.controller";
-import { tenantMiddleware } from "../middlewares/auth.middleware";
+import { authenticateToken } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.use(tenantMiddleware);
+router.use(authenticateToken);
 
 router.get('/', getProducts);
 router.post('/', createProduct);
