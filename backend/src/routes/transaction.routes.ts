@@ -1,10 +1,12 @@
 import { Router } from "express";
-import { createTransaction, getTransactionHistory } from "../controllers/transaction.controller";
+import { createTransaction, getTransactionHistory, getTransactionStatus, sepayWebhook } from "../controllers/transaction.controller";
 import { authenticateToken } from "../middlewares/auth.middleware";
 
 const router = Router();
 
 router.post('/', createTransaction);
+router.post('/webhook/sepay', sepayWebhook);
+router.get('/:id/status', getTransactionStatus);
 
 router.use(authenticateToken);
 

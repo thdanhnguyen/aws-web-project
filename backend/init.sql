@@ -56,6 +56,7 @@ CREATE TABLE invoices (
   subtotal NUMERIC(10,2) NOT NULL,
   tax NUMERIC(10,2) NOT NULL,
   total_amount NUMERIC(10,2) NOT NULL,
+  payment_status VARCHAR(20) DEFAULT 'Unpaid',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

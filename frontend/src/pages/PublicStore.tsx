@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 const API_URL = 'http://localhost:5000/api';
+const bankId = import.meta.env.VITE_BANK_ID || 'Vietcombank';
+const bankAcc = import.meta.env.VITE_BANK_ACC || '1035968622';
 
 const formatVND = (amount: any) => {
   const value = parseFloat(amount) * 1000;
@@ -20,6 +22,11 @@ export default function PublicStore() {
   const [tempSelection, setTempSelection] = useState({ color: 'Black', size: 'S' });
   const [customerInfo, setCustomerInfo] = useState({ name: '', email: '' });
 
+  // States cho Thanh toán SePay
+  const [showPayment, setShowPayment] = useState(false);
+  const [invoiceId, setInvoiceId] = useState<number | null>(null);
+  const [totalAmount, setTotalAmount] = useState<number>(0);
+
   useEffect(() => {
     fetch(`${API_URL}/public/shops/${tenant_id}/products`)
       .then(res => res.json())
@@ -29,6 +36,28 @@ export default function PublicStore() {
       })
       .catch(() => setLoading(false));
   }, [tenant_id]);
+
+  useEffect(() => {
+    let interval: any;
+    if (showPayment && invoiceId) {
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_URL}/transactions/${invoiceId}/status`);
+          const data = await res.json();
+          if (data.success && data.payment_status === 'Paid') {
+            clearInterval(interval);
+            setShowPayment(false);
+            setCart([]);
+            setCustomerInfo({ name: '', email: '' });
+            toast.success("🚀 Đặt hàng và Thanh toán thành công! Cảm ơn sếp.", { duration: 8000 });
+          }
+        } catch (e) {
+          console.error("Lỗi khi poll payment status", e);
+        }
+      }, 3000); // Poll every 3 seconds
+    }
+    return () => clearInterval(interval);
+  }, [showPayment, invoiceId]);
 
   const addToCart = () => {
     if (!activeProduct) return;
@@ -75,9 +104,9 @@ export default function PublicStore() {
     });
     const data = await res.json();
     if (data.success) {
-      toast.success("🚀 Đặt hàng thành công! Cảm ơn sếp.");
-      setCart([]);
-      setCustomerInfo({ name: '', email: '' });
+      setInvoiceId(data.receipt.id);
+      setTotalAmount(subtotal + tax);
+      setShowPayment(true);
     } else {
       toast.error(data.error || "Lỗi thanh toán");
     }
@@ -147,7 +176,7 @@ export default function PublicStore() {
                   <div className="flex justify-between text-[11px] text-zinc-400 font-bold uppercase tracking-widest"><span>Tax (10%)</span><span>{formatVND(tax)}</span></div>
                   <div className="flex justify-between items-center pt-6 border-t border-zinc-50">
                     <span className="text-3xl font-black text-[#8FA08A] tracking-tighter">{formatVND(subtotal + tax)}</span>
-                    <button type="submit" disabled={cart.length === 0} className="bg-[#8FA08A] text-white px-10 py-5 rounded-3xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-[#8FA08A]/20 active:scale-95 transition-all disabled:opacity-30">Chốt đơn</button>
+                    <button type="submit" disabled={cart.length === 0} className="bg-[#8FA08A] text-white px-10 py-5 rounded-3xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-[#8FA08A]/20 active:scale-95 transition-all disabled:opacity-30">Thanh Toán</button>
                   </div>
                </div>
             </form>
@@ -186,6 +215,51 @@ export default function PublicStore() {
                  </div>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* 💳 MODAL: THANH TOÁN SEPAY */}
+      {showPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white/80 backdrop-blur-md">
+           <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative border border-zinc-100 animate-in zoom-in-95 text-center">
+              <button 
+                 onClick={() => { setShowPayment(false); toast('Sếp vừa hủy thanh toán nha!', { icon: '⚠️' }) }} 
+                 className="absolute top-10 right-10 text-zinc-300 font-bold"
+              >✕</button>
+              <h2 className="text-2xl font-black italic mb-2">Thanh Toán Đơn Hàng</h2>
+              <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-8">Vui lòng quét mã QR qua App Ngân Hàng</p>
+              
+              <div className="bg-zinc-50 rounded-3xl p-6 mb-8 mx-auto w-fit border border-zinc-100">
+                <img 
+                  src={`https://qr.sepay.vn/img?bank=${bankId}&acc=${bankAcc}&template=compact&amount=${totalAmount}&des=DH${invoiceId}`} 
+                  alt="QR Code" 
+                  className="rounded-2xl shadow-sm" 
+                />
+              </div>
+
+              <div className="space-y-2 mb-8">
+                <p className="text-sm font-bold text-zinc-600">Nội dung chuyển khoản tự động:</p>
+                <div className="bg-[#8FA08A]/10 text-[#8FA08A] font-black text-2xl py-3 rounded-2xl tracking-widest">
+                  DH{invoiceId}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 text-zinc-400">
+                <div className="w-4 h-4 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-xs font-bold uppercase tracking-widest">Đang chờ thanh toán...</span>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* 📱 BARS: FLOATING MOBILE CHECKOUT */}
+      {cart.length > 0 && !showPayment && (
+        <div className="lg:hidden fixed bottom-6 left-6 right-6 bg-[#333333] text-white rounded-[2rem] p-4 flex justify-between items-center shadow-2xl z-40 animate-in slide-in-from-bottom-10 border border-zinc-700">
+           <div className="flex flex-col ml-2">
+              <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">{cart.reduce((a, b) => a + b.quantity, 0)} Món</span>
+              <span className="text-lg font-black tracking-tighter text-[#8FA08A]">{formatVND(subtotal + tax)}</span>
+           </div>
+           <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} className="bg-[#8FA08A] text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-[#8FA08A]/20 active:scale-95 transition-all">Thanh Toán</button>
         </div>
       )}
     </div>
