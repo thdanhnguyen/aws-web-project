@@ -13,17 +13,23 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // [LEARN] Khi đăng nhập, ta phải bật credentials: 'include' 
+      // để trình duyệt cho phép nhận Cookie từ Server
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // [FIX] Cho phép trình duyệt nhận Cookie từ Server
         body: JSON.stringify(formData)
       });
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem('pos_token', data.token);
+        // [LEARN] CHỈ lưu User info vào LocalStorage để hiện tên
+        // TUYỆT ĐỐI không lưu Access Token vào đây như sếp yêu cầu
         localStorage.setItem('pos_user', JSON.stringify(data.user));
-        navigate('/');
+        
+        // Chuyển hướng về trang quản trị Dashboard (/pos)
+        navigate('/pos'); 
       } else {
         setError(data.error || 'Đăng nhập thất bại');
       }
@@ -36,13 +42,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen w-full bg-[#FBFBF9] flex items-center justify-center p-4 font-outfit">
-      {/* [LEARN] Thẻ trắng tinh khôi (#FFFFFF) nổi bật trên nền kem nhạt */}
       <div className="w-full max-w-md bg-white border border-zinc-100 rounded-[1.5rem] p-8 lg:p-12 shadow-soft animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="text-center mb-10">
           <div className="w-14 h-14 bg-[#8FA08A] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#8FA08A]/20">
-            <span className="text-white font-black text-xl">L</span>
+            <span className="text-white font-black text-xl">M</span>
           </div>
-          <h1 className="text-3xl font-bold text-[#333333] mb-2 tracking-tight">Luxury POS</h1>
+          <h1 className="text-3xl font-bold text-[#333333] mb-2 tracking-tight">MEKIE POS</h1>
           <p className="text-zinc-400 text-[10px] uppercase tracking-[0.2em] font-medium">Bán hàng tinh tế</p>
         </div>
 

@@ -24,7 +24,7 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
     const client = await pool.connect();
     try {
         const currentTenantId = req.tenant_id;
-        const { name, price, description } = req.body;
+        const { name, price, description, material, origin } = req.body;
 
         await client.query('BEGIN');
 
@@ -34,8 +34,8 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
         const productId = productRes.rows[0].id;
 
         const detailRes = await client.query(
-            'INSERT INTO product_details (product_id, price, description) VALUES ($1, $2, $3) RETURNING *',
-            [productId, price, description]
+            'INSERT INTO product_details (product_id, price, description, material, origin) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [productId, price, description, material, origin]
         );
 
         await client.query('COMMIT');
@@ -58,7 +58,7 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
     try {
         const currentTenantId = req.tenant_id;
         const { id } = req.params;
-        const { name, price, description } = req.body;
+        const { name, price, description, material, origin } = req.body;
 
         await client.query('BEGIN');
 
@@ -67,8 +67,8 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
         );
 
         const result = await client.query(
-            'UPDATE product_details SET price = $1, description = $2 WHERE product_id = $3 RETURNING *',
-            [price, description, id]
+            'UPDATE product_details SET price = $1, description = $2, material = $3, origin = $4 WHERE product_id = $5 RETURNING *',
+            [price, description, material, origin, id]
         );
 
         await client.query('COMMIT');
@@ -76,7 +76,7 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
         return res.status(200).json({ success: true, message: 'Product updated successfully' });
     } catch (error) {
         await client.query('ROLLBACK');
-        return res.status(500).json({ error: 'Failed to update product 3NF' });
+        return res.status(500).json({ error: 'Failed to update product' });
     } finally {
         client.release();
     }
