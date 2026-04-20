@@ -41,7 +41,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#FBFBF9] flex items-center justify-center p-4 font-outfit">
+    <div className="min-h-screen w-full bg-[#FBFBF9] flex items-center justify-center p-4 font-outfit relative">
+      <Link to="/" className="absolute top-8 left-8 lg:top-12 lg:left-12 text-zinc-400 hover:text-[#333333] transition-colors text-xs font-black tracking-widest uppercase flex items-center gap-2">
+        <span className="text-lg">←</span> Trang chủ
+      </Link>
       <div className="w-full max-w-md bg-white border border-zinc-100 rounded-[1.5rem] p-8 lg:p-12 shadow-soft animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="text-center mb-10">
           <div className="w-14 h-14 bg-[#8FA08A] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#8FA08A]/20">

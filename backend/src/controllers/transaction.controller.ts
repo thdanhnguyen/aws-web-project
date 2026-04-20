@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { pool } from '../config/database'; 
 import { sendReceiptEmail } from '../utils/mailer';
 import { AuthRequest } from '../middlewares/auth.middleware';
@@ -112,3 +112,57 @@ export const getTransactionHistory = async (req: AuthRequest, res: Response) =>{
     return res.status(500).json({ error: 'Failed to fetch transaction history' });
   }
 }
+
+export const getTransactionStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    const invoiceId = req.params.id;
+    if (!invoiceId) return res.status(400).json({ error: 'Invoice ID is required' });
+
+    const result = await pool.query('SELECT payment_status FROM invoices WHERE id = $1', [invoiceId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Order not found' });
+
+    return res.json({ success: true, payment_status: result.rows[0].payment_status });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch status' });
+  }
+};
+
+export const sepayWebhook = async (req: Request, res: Response) => {
+  try {
+    const apikey = process.env.SEPAY_API_KEY;
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || authHeader !== `Apikey ${apikey}`) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const data = req.body;
+    if (!data || !data.content) {
+      return res.status(400).json({ success: false, message: 'No data' });
+    }
+
+    // Tách mã đơn hàng bằng Regex (vd: DH105)
+    const content = data.content;
+    const regex = /DH(\d+)/i; 
+    const match = content.match(regex);
+
+    if (!match) {
+      return res.status(200).json({ success: false, message: 'Không tìm thấy mã đơn hàng' });
+    }
+
+    const invoiceId = match[1];
+
+    const result = await pool.query(
+      "UPDATE invoices SET payment_status = 'Paid' WHERE id = $1 AND payment_status = 'Unpaid' RETURNING id", 
+      [invoiceId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(200).json({ success: false, message: 'Order not found or already paid' });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Webhook Error: ", error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};

@@ -25,7 +25,7 @@ export default function Discovery() {
             <span className="text-[20rem] font-black absolute -top-20 -left-20">MEK</span>
             <span className="text-[20rem] font-black absolute -bottom-20 -right-20">IE</span>
          </div>
-         <h1 className="text-7xl lg:text-9xl font-light italic tracking-tighter mb-8 animate-in fade-in slide-in-from-bottom-10 duration-1000">The Collection</h1>
+         <h1 className="text-6xl md:text-7xl lg:text-9xl font-light italic tracking-tighter mb-8 animate-in fade-in slide-in-from-bottom-10 duration-1000">The Collection</h1>
          <p className="max-w-xl text-zinc-400 text-sm uppercase tracking-[0.4em] font-medium leading-loose animate-in fade-in slide-in-from-bottom-20 duration-1000">Khám phá không gian mua sắm tinh tế từ những thương hiệu hàng đầu</p>
          <div className="mt-14 flex gap-6">
             <a href="#shops" className="bg-[#333333] text-white px-10 py-5 rounded-full text-[10px] uppercase font-black tracking-widest shadow-2xl hover:bg-black transition-all active:scale-95">Explore Shops</a>
