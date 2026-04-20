@@ -6,8 +6,8 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 export const createTransaction = async (req: AuthRequest, res: Response) => {
   const client = await pool.connect();
   try {
-    const currentTenantId = req.tenant_id;
-    const { customer_email, items } = req.body;
+    const { customer_email, customer_name, items, tenant_id, is_public } = req.body;
+    const currentTenantId = req.tenant_id || tenant_id;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'Items are required' });
@@ -23,7 +23,7 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     if (customerRes.rowCount === 0) {
       customerRes = await client.query(
         'INSERT INTO customers (tenant_id, name, email) VALUES ($1, $2, $3) RETURNING id',
-        [currentTenantId, customer_email.split('@')[0], customer_email]
+        [currentTenantId, customer_name || customer_email.split('@')[0], customer_email]
       );
     }
     customerId = customerRes.rows[0].id;
@@ -92,3 +92,23 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     client.release();
   }
 };
+
+export const getTransactionHistory = async (req: AuthRequest, res: Response) =>{
+  try{
+    const currentTenantId = req.tenant_id
+    const result = await pool.query(
+      `SELECT i.id, i.total_amount, i.created_at, c.name as customer_name
+      FROM invoices i
+      LEFT JOIN customers c on i.customer_id = c.id
+      WHERE i.tenant_id = $1
+      ORDER BY i.created_at DESC`,
+      [currentTenantId]
+    );
+    return res.json({
+      success: true,
+      data: result.rows
+    })
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch transaction history' });
+  }
+}

@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS invoice_items, invoices, transaction, transactions, product_details, products, customers, users, tenants CASCADE;
+DROP TABLE IF EXISTS refresh_tokens, invoice_items, invoices, transaction, transactions, product_details, products, customers, users, tenants CASCADE;
 
 CREATE TABLE tenants (
   id VARCHAR(50) PRIMARY KEY,
@@ -12,6 +12,14 @@ CREATE TABLE users (
   tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
   email VARCHAR(100) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE refresh_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -60,6 +68,9 @@ CREATE TABLE invoice_items (
   color VARCHAR(20),
   size VARCHAR(10)
 );
+
+ALTER TABLE tenants ADD COLUMN domain VARCHAR(100) UNIQUE;
+ALTER TABLE tenants ADD COLUMN access_code VARCHAR(50);
 
 INSERT INTO tenants (id, name) VALUES ('LUXURY-SHOP-01', 'Shop Thời Trang Outfit');
 

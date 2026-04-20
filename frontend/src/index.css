@@ -5,12 +5,16 @@
   color: #333333; /* Xám than mặc định */
 }
 
-body {
+html, body, #app {
+  height: 100%;
+  width: 100%;
   margin: 0;
+  padding: 0;
+}
+
+body {
   min-width: 320px;
-  min-height: 100vh;
-  /* [LEARN] Trắng ngà giúp dịu mắt và tạo cảm giác sang trọng (Minimalist Luxury) */
-  background-color: #FBFBF9; 
+  background-color: #FBFBF9;
 }
 
 /* [LEARN] Tùy chỉnh thanh cuộn siêu mỏng để đồng bộ giao diện sạch */
