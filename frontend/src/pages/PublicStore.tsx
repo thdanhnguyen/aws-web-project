@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
@@ -27,6 +27,21 @@ export default function PublicStore() {
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
   const [totalAmount, setTotalAmount] = useState<number>(0);
 
+  // ❄️ Anti-lag Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const filteredProducts = useMemo(() => {
+    if (!debouncedQuery) return products;
+    const lowerQuery = debouncedQuery.toLowerCase().trim();
+    return products.filter((p: any) => p.name.toLowerCase()
+    .includes(lowerQuery) || (p.price && p.price.toString().includes(lowerQuery)));
+  }, [debouncedQuery, products]);
   useEffect(() => {
     fetch(`${API_URL}/public/shops/${tenant_id}/products`)
       .then(res => res.json())
@@ -129,16 +144,26 @@ export default function PublicStore() {
 
       <main className="max-w-7xl mx-auto p-8 lg:p-14 flex flex-col lg:flex-row gap-14">
         <div className="flex-1">
-          <h2 className="text-5xl font-light italic mb-14 tracking-tighter">Collection</h2>
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-14">
+             <h2 className="text-5xl font-light italic tracking-tighter text-[#333333]">Collection</h2>
+             <input 
+                 type="text" 
+                 placeholder="Tìm món hàng..." 
+                 className="bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-soft w-full lg:w-72 font-medium"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+             />
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-            {products.map(p => (
+            {filteredProducts.map(p => (
               <div key={p.id} onClick={() => setActiveProduct(p)} className="bg-white p-12 rounded-[4rem] border border-zinc-50 shadow-soft hover:shadow-2xl transition-all cursor-pointer group flex flex-col items-center">
-                <h3 className="font-bold text-lg mb-2">{p.name}</h3>
-                <p className="text-zinc-400 text-[10px] uppercase mb-6 font-medium">{p.material} | {p.origin}</p>
+                <h3 className="font-bold text-lg mb-2 text-center text-[#333333]">{p.name}</h3>
+                <p className="text-zinc-400 text-[10px] uppercase mb-6 font-medium tracking-widest">{p.material} | {p.origin}</p>
                 <p className="text-[#8FA08A] font-black text-2xl">{formatVND(p.price)}</p>
-                <div className="mt-8 bg-[#333333] text-white px-10 py-3 rounded-full text-[10px] uppercase font-black tracking-widest opacity-0 group-hover:opacity-100 transition-all">Mua ngay</div>
+                <div className="mt-8 bg-[#333333] text-white px-10 py-3 rounded-full text-[10px] uppercase font-black tracking-widest opacity-0 group-hover:opacity-100 transition-all shadow-xl shadow-black/10">Mua ngay</div>
               </div>
             ))}
+            {filteredProducts.length === 0 && <div className="col-span-full py-10 text-center text-zinc-400 text-xs italic tracking-widest uppercase">Không tìm thấy sản phẩm</div>}
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Login from './pages/Login';
@@ -13,6 +13,8 @@ const COLORS = [
   { name: 'White', hex: '#ffffff', class: 'bg-white border border-zinc-200' },
   { name: 'Grey', hex: '#71717a', class: 'bg-zinc-400' }
 ];
+// [LEARN] Mảng SIZES dùng để render danh sách nút chọn size bằng .map()
+// Thay vì viết lặp 4 nút HTML thủ công, ta dùng vòng lặp để code ngắn gọn và dễ thêm size mới.
 const SIZES = ['S', 'M', 'L', 'XL'];
 
 const formatVND = (amount: any) => {
@@ -21,19 +23,61 @@ const formatVND = (amount: any) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 };
 
+const formatVietnamTime = (dateStr: string) => {
+  if (!dateStr) return '';
+  try {
+      const dateObj = new Date(dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : `${dateStr}Z`);
+      return new Intl.DateTimeFormat('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: false
+      }).format(dateObj);
+  } catch {
+      return dateStr;
+  }
+};
+
 function POSPage() {
-  const [activeView, setActiveView] = useState<'sell' | 'history' | 'warehouse'>('sell');
+  const [activeView, setActiveView] = useState<'dashboard' | 'sell' | 'history' | 'warehouse'>('dashboard');
   const [products, setProducts] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [cart, setCart] = useState<any[]>([]); 
   const [activeProduct, setActiveProduct] = useState<any | null>(null);
-  const [editProduct, setEditProduct] = useState<any | null>(null); // Dùng chung cho cả Thêm mới và Sửa
-  const [isAddingNew, setIsAddingNew] = useState(false); // Flag để phân biệt Thêm/Sửa
+  const [editProduct, setEditProduct] = useState<any | null>(null); 
+  const [isAddingNew, setIsAddingNew] = useState(false);
   const [tempSelection, setTempSelection] = useState({ color: 'Black', size: 'S' });
   const [user, setUser] = useState<any>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // [LEARN] Anti-lag Search: Tách state thành 2 lớp
+  // searchQuery: cập nhật tức thì khi gõ (controlled input)
+  // debouncedQuery: chỉ cập nhật sau khi ngừng gõ 300ms (trigger lọc dữ liệu)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  // [LEARN] State lưu thông tin khách hàng khi cashier tạo đơn nội bộ
+  // Thay thế cho chuỗi hard-code 'khachang@demo.com' trước đây
+  const [customerInput, setCustomerInput] = useState({ name: '', email: '' });
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const filteredProducts = useMemo(() => {
+    if (!debouncedQuery) return products;
+    const lowerQuery = debouncedQuery.toLowerCase().trim();
+    return products.filter((p: any) => p.name.toLowerCase().includes(lowerQuery) || (p.price && p.price.toString().includes(lowerQuery)));
+  }, [debouncedQuery, products]);
+
+  // 📊 Dashboard Aggregations (Computed on-the-fly)
+  const totalRevenue = useMemo(() => history.reduce((sum, item) => sum + parseFloat(item.total_amount), 0), [history]);
+  const totalOrders = history.length;
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  const recentOrders = useMemo(() => [...history].slice(0, 5), [history]);
 
   const refreshAccessToken = useCallback(async () => {
     try {
@@ -95,8 +139,11 @@ function POSPage() {
   }, [refreshAccessToken, fetchProducts]);
 
   useEffect(() => {
-    if (activeView === 'history') fetchHistory();
+    if (activeView === 'history' || activeView === 'dashboard') fetchHistory();
     if (activeView === 'warehouse' || activeView === 'sell') fetchProducts();
+    // [LEARN] Reset thanh tìm kiếm khi người dùng chuyển tab.
+    // Tránh trường hợp gõ 'Jean' ở Storefront rồi qua Warehouse vẫn thấy bị lọc.
+    setSearchQuery('');
   }, [activeView, fetchHistory, fetchProducts]);
 
   const handleLogout = async () => {
@@ -154,20 +201,28 @@ function POSPage() {
     setActiveProduct(null);
   };
 
-  const handelCheckout = async () =>{
-    if(cart.length === 0) return toast.error("Giỏ hàng trống");
+  const handelCheckout = async () => {
+    if (cart.length === 0) return toast.error("Giỏ hàng trống");
     const payloadItems = cart.map(item => ({
       product_id: item.id, quantity: item.quantity, color: item.color, size: item.size
     }));
+    // [FIX] Thay vì hard-code email, giờ dùng thông tin cashier nhập vào
+    // Nếu cashier bỏ trống, fallback về 'khach@pos.local' để họ sạn phẩm vẫn được tạo
     const res = await fetchWithAuth(`${API_URL}/transactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_email: 'khachang@demo.com', items: payloadItems })
+      body: JSON.stringify({
+        customer_name: customerInput.name || 'Khách lẻ',
+        customer_email: customerInput.email || 'khach@pos.local',
+        items: payloadItems
+      })
     });
     const data = await res.json();
-    if(data.success){
-      toast.success("Thanh toán thành công!");
+    if (data.success) {
+      toast.success("Tạo đơn hàng thành công!");
       setCart([]);
+      // [LEARN] Reset thông tin khách sau khi thanh toán xong
+      setCustomerInput({ name: '', email: '' });
       fetchHistory();
     } else {
       toast.error("Thanh toán thất bại");
@@ -191,6 +246,9 @@ function POSPage() {
           <h1 className="text-lg font-black hidden lg:block text-[#333333] tracking-tighter italic text-center">MEKIE POS</h1>
         </div>
         <nav className="flex-1 space-y-2">
+          <button onClick={() => setActiveView('dashboard')} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'dashboard' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
+            <span className="text-lg">📊</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Tổng Quan</span>
+          </button>
           <button onClick={() => setActiveView('sell')} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'sell' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
             <span className="text-lg">🛒</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Bán Hàng</span>
           </button>
@@ -208,35 +266,134 @@ function POSPage() {
         </div>
       </aside>
 
-      <main className="flex-1 p-8 lg:p-14 overflow-y-auto bg-[#FBFBF9]">
+      <main className="flex-1 p-8 lg:p-14 overflow-y-auto bg-[#FBFBF9] custom-scrollbar">
+        
+        {/* VIEW: DASHBOARD */}
+        {activeView === 'dashboard' && (
+          <div className="animate-in slide-in-from-bottom-10 duration-500">
+             <header className="mb-14"><h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Dashboard</h2></header>
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-14">
+                <div className="bg-white rounded-[3rem] p-10 border border-zinc-100 shadow-soft relative overflow-hidden flex flex-col justify-center">
+                   <div className="text-[10px] uppercase font-black tracking-widest text-[#8FA08A] mb-4">Total Revenue</div>
+                   <div className="text-3xl font-black">{formatVND(totalRevenue)}</div>
+                </div>
+                <div className="bg-white rounded-[3rem] p-10 border border-zinc-100 shadow-soft relative overflow-hidden flex flex-col justify-center">
+                   <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-4">Total Orders</div>
+                   <div className="text-3xl font-black">{totalOrders} <span className="text-xs uppercase text-zinc-400 tracking-normal ml-1">đơn</span></div>
+                </div>
+                <div className="bg-[#333333] text-white rounded-[3rem] p-10 border border-zinc-800 shadow-xl relative overflow-hidden flex flex-col justify-center">
+                   <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-4">Avg Order Value</div>
+                   <div className="text-3xl font-black text-[#8FA08A]">{formatVND(avgOrderValue)}</div>
+                </div>
+             </div>
+             <div>
+                <h3 className="text-2xl font-light italic mb-8">Recent Transactions</h3>
+                <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-soft overflow-hidden">
+                    <table className="w-full text-left">
+                      <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-[0.2em] font-black text-zinc-400"><tr><th className="p-6 lg:p-8">Mã Đơn</th><th className="p-6 lg:p-8">Khách Hàng</th><th className="p-6 lg:p-8">Thời Gian</th><th className="p-6 lg:p-8 text-right">Tổng Tiền</th></tr></thead>
+                      <tbody className="divide-y divide-zinc-50 text-sm">
+                        {recentOrders.map((h, i) => (
+                          <tr key={i} className="hover:bg-zinc-50 transition-colors">
+                            <td className="p-6 lg:p-8 font-bold text-[#8FA08A]">#{h.id}</td>
+                            <td className="p-6 lg:p-8">{h.customer_name || 'Khách vãng lai'}</td>
+                            <td className="p-6 lg:p-8 text-zinc-400">{formatVietnamTime(h.created_at || h.create_at)}</td>
+                            <td className="p-6 lg:p-8 text-right font-black">{formatVND(h.total_amount)}</td>
+                          </tr>
+                        ))}
+                        {recentOrders.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-zinc-400 italic text-xs">Chưa có giao dịch nào</td></tr>}
+                      </tbody>
+                    </table>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* VIEW: SELL */}
         {activeView === 'sell' && (
-          <div className="animate-in fade-in duration-500 flex h-full gap-10">
+          <div className="animate-in fade-in duration-500 flex flex-col lg:flex-row h-full gap-10">
             <div className="flex-1">
-                <header className="mb-14 border-b border-zinc-100 pb-8"><h2 className="text-5xl font-light italic text-[#333333]">Storefront</h2></header>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {products.map((product) => (
-                    <div key={product.id} onClick={() => setActiveProduct(product)} className="bg-white border border-zinc-100 p-10 rounded-[2.5rem] shadow-soft shadow-hover cursor-pointer group flex flex-col items-center">
-                    <span className="text-6xl mb-8 group-hover:scale-110 transition-transform">👕</span>
-                    <h3 className="text-sm font-bold text-[#333333] mb-2">{product.name}</h3>
-                    <p className="text-[#8FA08A] font-medium text-md">{formatVND(product.price)}</p>
-                    </div>
-                ))}
+                <header className="mb-10 lg:mb-14 border-b border-zinc-100 pb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                   <h2 className="text-5xl font-light italic text-[#333333]">Storefront</h2>
+                   <input 
+                      type="text" 
+                      placeholder="Tìm món hàng..." 
+                      className="bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full lg:w-72 font-medium"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                   />
+                </header>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                {filteredProducts.map((product) => {
+                    // [NEW] Kiểm tra tồn kho: nếu stock = 0 hoặc undefined thì coi là hết hàng
+                    const outOfStock = (product.stock ?? 0) <= 0;
+                    return (
+                      <div
+                        key={product.id}
+                        // [LEARN] Chỉ gọi setActiveProduct khi còn hàng — dùng điều kiện `&& !outOfStock`
+                        // để ngăn click vào sản phẩm hết hàng mà không cần disabled prop (div không có disabled)
+                        onClick={() => !outOfStock && setActiveProduct(product)}
+                        className={`bg-white border border-zinc-100 p-8 lg:p-10 rounded-[2.5rem] shadow-soft flex flex-col items-center text-center relative transition-all
+                          ${outOfStock
+                            ? 'opacity-40 grayscale cursor-not-allowed'          // Mờ + xám + không cho click
+                            : 'shadow-hover cursor-pointer group hover:shadow-xl' // Bình thường: hover effect
+                          }`}
+                      >
+                        <h3 className="text-sm font-bold text-[#333333] mb-2">{product.name}</h3>
+                        <p className="text-[#8FA08A] font-black text-lg">{formatVND(product.price)}</p>
+                        {/* [NEW] Badge "Hết hàng" nổi lên góc trên phải của card khi stock = 0 */}
+                        {outOfStock && (
+                          <span className="absolute top-4 right-4 bg-red-50 text-red-400 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full">
+                            Hết hàng
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {filteredProducts.length === 0 && <div className="col-span-full py-20 text-center text-zinc-400 text-xs italic tracking-widest uppercase">Không tìm thấy sản phẩm</div>}
                 </div>
             </div>
-            <div className="w-[380px] bg-white rounded-[3rem] p-10 shadow-2xl flex flex-col border border-zinc-50 h-fit sticky top-0">
-                 <h3 className="text-2xl font-light italic mb-10">Cart</h3>
-                 <div className="flex-1 space-y-6 max-h-[400px] overflow-y-auto pr-2">
+
+            {/* Panel Giỏ hàng + Thông tin khách hàng */}
+            <div className="w-full lg:w-[380px] bg-white rounded-[3rem] p-10 shadow-2xl flex flex-col border border-zinc-50 h-fit sticky top-0">
+                 <h3 className="text-2xl font-light italic mb-6">Cart</h3>
+                 <div className="flex-1 space-y-4 max-h-[300px] overflow-y-auto pr-2 mb-4">
                     {cart.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-sm border-b border-zinc-50 pb-4">
-                        <div><p className="font-bold">{item.name}</p><p className="text-[10px] text-zinc-400 uppercase tracking-tighter">{item.color} / {item.size} x {item.quantity}</p></div>
-                        <span className="font-bold">{formatVND(parseFloat(item.price) * item.quantity)}</span>
+                      <div key={idx} className="flex justify-between items-center text-sm border-b border-zinc-50 pb-3">
+                        <div className="flex-1">
+                          <p className="font-bold">{item.name}</p>
+                          <p className="text-[10px] text-zinc-400 uppercase tracking-tighter">{item.color} / {item.size} x {item.quantity}</p>
+                        </div>
+                        <span className="font-bold mr-3">{formatVND(parseFloat(item.price) * item.quantity)}</span>
+                        {/* [NEW] Nút X để xóa từng món khỏi giỏ hàng
+                            Dùng .filter() để loại bỏ phần tử tại index idx khỏi mảng cart */}
+                        <button onClick={() => setCart(c => c.filter((_, i) => i !== idx))} className="text-zinc-300 hover:text-red-400 transition-colors text-lg leading-none">✕</button>
                       </div>
                     ))}
+                    {cart.length === 0 && <p className="text-center text-zinc-300 text-xs italic py-8">Chưa có sản phẩm</p>}
                  </div>
-                 <div className="mt-10 pt-8 border-t border-zinc-50 space-y-4">
+
+                 {/* [NEW] Form nhập thông tin khách hàng cho cashier
+                     Trước đây hard-code 'khachang@demo.com', bây giờ cashier có thể nhập tên/email thật */}
+                 <div className="border-t border-zinc-50 pt-6 mb-4 space-y-3">
+                   <input
+                     type="text" placeholder="Tên khách hàng"
+                     className="w-full bg-[#F9FAFB] rounded-xl px-4 py-3 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
+                     value={customerInput.name}
+                     onChange={e => setCustomerInput(p => ({...p, name: e.target.value}))}
+                   />
+                   <input
+                     type="email" placeholder="Email (tùy chọn)"
+                     className="w-full bg-[#F9FAFB] rounded-xl px-4 py-3 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
+                     value={customerInput.email}
+                     onChange={e => setCustomerInput(p => ({...p, email: e.target.value}))}
+                   />
+                 </div>
+
+                 <div className="space-y-3">
                     <div className="flex justify-between text-xs text-zinc-400"><span>Subtotal</span><span className="font-bold">{formatVND(subtotal)}</span></div>
                     <div className="flex justify-between text-xs text-zinc-400"><span>Tax (10%)</span><span className="font-bold">{formatVND(tax)}</span></div>
-                    <div className="flex justify-between text-xs text-zinc-400 pt-4 border-t border-zinc-50"><span>Total</span><span className="text-xl font-black text-[#8FA08A]">{formatVND(total)}</span></div>
+                    <div className="flex justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-50"><span>Total</span><span className="text-xl font-black text-[#8FA08A]">{formatVND(total)}</span></div>
                     <button onClick={handelCheckout} className="w-full bg-[#8FA08A] text-white font-bold py-5 rounded-[1.5rem] shadow-xl shadow-[#8FA08A]/20 uppercase tracking-widest text-[10px] active:scale-95 transition-all">Tạo hóa đơn</button>
                  </div>
             </div>
@@ -249,13 +406,29 @@ function POSPage() {
             <header className="mb-14"><h2 className="text-5xl font-light text-[#333333] tracking-tight italic">History</h2></header>
             <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-soft overflow-hidden">
                 <table className="w-full text-left">
-                  <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-[0.2em] font-black text-zinc-400"><tr><th className="p-8">Mã Đơn</th><th className="p-8">Khách Hàng</th><th className="p-8">Thời Gian</th><th className="p-8 text-right">Tổng Tiền</th></tr></thead>
+                  <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-[0.2em] font-black text-zinc-400">
+                    <tr>
+                      <th className="p-8">Mã Đơn</th>
+                      <th className="p-8">Khách Hàng</th>
+                      <th className="p-8">Thời Gian</th>
+                      <th className="p-8">Trạng Thái</th>
+                      <th className="p-8 text-right">Tổng Tiền</th>
+                    </tr>
+                  </thead>
                   <tbody className="divide-y divide-zinc-50 text-sm">
                     {history.map((h, i) => (
                       <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
                         <td className="p-8 font-bold text-[#8FA08A]"># {h.id}</td>
                         <td className="p-8">{h.customer_name || 'Khách vãng lai'}</td>
-                        <td className="p-8 text-zinc-400">{new Date(h.created_at || h.create_at).toLocaleString('vi-VN')}</td>
+                        <td className="p-8 text-zinc-400">{formatVietnamTime(h.created_at || h.create_at)}</td>
+                        {/* [NEW] Badge trạng thái thanh toán — hiển thị màu xanh nếu Paid, màu xám nếu Unpaid */}
+                        <td className="p-8">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                            h.payment_status === 'Paid'
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-zinc-100 text-zinc-400'
+                          }`}>{h.payment_status || 'Unpaid'}</span>
+                        </td>
                         <td className="p-8 text-right font-black">{formatVND(h.total_amount)}</td>
                       </tr>
                     ))}
@@ -268,13 +441,30 @@ function POSPage() {
         {/* VIEW: WAREHOUSE */}
         {activeView === 'warehouse' && (
            <div className="animate-in slide-in-from-bottom-10 duration-500">
-             <header className="mb-14"><h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Warehouse</h2></header>
+             <header className="mb-14 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
+                <h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Warehouse</h2>
+                <input 
+                   type="text" 
+                   placeholder="Tìm sản phẩm trong kho..." 
+                   className="bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full lg:w-80 font-medium"
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                />
+             </header>
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {products.map(p => (
+                {filteredProducts.map(p => (
                   <div key={p.id} className="bg-white p-10 rounded-[3rem] border border-zinc-100 shadow-soft flex justify-between items-center group">
                     <div className="flex gap-6 items-center">
-                        <div className="w-16 h-16 bg-[#F9FAFB] rounded-2xl flex items-center justify-center text-3xl">👕</div>
-                        <div><h4 className="font-bold text-lg">{p.name}</h4><p className="text-[10px] text-zinc-400 uppercase tracking-widest">{p.material} | {p.origin}</p></div>
+                        <div>
+                          <h4 className="font-bold text-lg">{p.name}</h4>
+                          <p className="text-[10px] text-zinc-400 uppercase tracking-widest">{p.material} | {p.origin}</p>
+                          {/* [NEW] Badge tồn kho: xanh nếu còn hàng, đỏ nếu hết hàng */}
+                          <span className={`mt-2 inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                            (p.stock ?? 0) > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-400'
+                          }`}>
+                            {(p.stock ?? 0) > 0 ? `Kho: ${p.stock}` : 'Hết hàng'}
+                          </span>
+                        </div>
                     </div>
                     <div className="text-right">
                         <p className="text-2xl font-black text-[#8FA08A] mb-3">{formatVND(p.price)}</p>
@@ -282,7 +472,6 @@ function POSPage() {
                     </div>
                   </div>
                 ))}
-                {/* [ACTION] Nút Kích hoạt Modal thêm hàng mới */}
                 <button onClick={openAddModal} className="bg-[#F9FAFB] border-2 border-dashed border-zinc-100 rounded-[3rem] flex flex-col items-center justify-center p-12 text-zinc-300 hover:text-[#8FA08A] hover:border-[#8FA08A]/30 transition-all group">
                    <span className="text-4xl mb-4 group-hover:scale-125 transition-transform">+</span>
                    <span className="text-[10px] uppercase font-black tracking-widest">Thêm sản phẩm mới</span>
@@ -308,13 +497,20 @@ function POSPage() {
                     <input required type="number" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.price} onChange={e => setEditProduct({...editProduct, price: e.target.value})} />
                   </div>
                   <div>
+                    {/* [NEW] Input nhập số lượng tồn kho — chủ shop có thể nhập thêm hàng vào kho */}
+                    <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Tồn Kho (số lượng)</label>
+                    <input required type="number" min="0" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.stock ?? 0} onChange={e => setEditProduct({...editProduct, stock: parseInt(e.target.value) || 0})} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
                     <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Xuất xứ</label>
                     <input type="text" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.origin || ''} onChange={e => setEditProduct({...editProduct, origin: e.target.value})} />
                   </div>
-                </div>
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Chất liệu</label>
-                  <input type="text" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.material || ''} onChange={e => setEditProduct({...editProduct, material: e.target.value})} />
+                  <div>
+                    <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Chất liệu</label>
+                    <input type="text" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.material || ''} onChange={e => setEditProduct({...editProduct, material: e.target.value})} />
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Mô tả chi tiết</label>
@@ -335,14 +531,37 @@ function POSPage() {
            <div className="bg-white border border-zinc-100 w-full max-w-xl rounded-[3rem] p-14 shadow-2xl relative">
               <button onClick={() => setActiveProduct(null)} className="absolute top-10 right-10 text-zinc-300 hover:text-red-500">✕</button>
               <div className="text-center font-light italic">
-                  <div className="text-6xl mb-8">👕</div>
                   <h2 className="text-4xl mb-2">{activeProduct.name}</h2>
                   <p className="text-zinc-400 text-[10px] uppercase tracking-widest mb-4">{activeProduct.material} | {activeProduct.origin}</p>
                   <p className="text-[#8FA08A] text-2xl font-black not-italic my-8">{formatVND(activeProduct.price)}</p>
-                  <div className="flex justify-center gap-4 mb-10">
+                  {/* [NEW] Hiển thị tồn kho trong modal. Disable nút Add to Cart nếu hết hàng */}
+                  <div className="mb-4">
+                    <span className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      (activeProduct.stock ?? 0) > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-400'
+                    }`}>
+                      {(activeProduct.stock ?? 0) > 0 ? `Còn ${activeProduct.stock} sản phẩm` : 'Hết hàng'}
+                    </span>
+                  </div>
+                  {/* [LEARN] Nút chọn màu: render từ mảng COLORS bằng .map() thay vì viết tay từng nút */}
+                  <div className="flex justify-center gap-4 mb-6">
                     {COLORS.map(c => <button key={c.name} onClick={() => setTempSelection(p=>({...p, color: c.name}))} className={`w-8 h-8 rounded-full ${c.class} ring-offset-4 ring-zinc-300 ${tempSelection.color === c.name ? 'ring-2' : ''}`}></button>)}
                   </div>
-                  <button onClick={addToCart} className="w-full bg-[#333333] text-white py-5 rounded-2xl uppercase text-[10px] tracking-widest">Add to cart</button>
+                  {/* [LEARN] Nút chọn size: render từ mảng SIZES bằng .map() */}
+                  <div className="flex justify-center gap-3 mb-10">
+                    {SIZES.map(s => (
+                      <button key={s} onClick={() => setTempSelection(p=>({...p, size: s}))} className={`w-10 h-10 rounded-xl text-xs font-black uppercase transition-all ${
+                        tempSelection.size === s ? 'bg-[#333333] text-white shadow-lg' : 'bg-[#F9FAFB] text-zinc-400 hover:bg-zinc-100'
+                      }`}>{s}</button>
+                    ))}
+                  </div>
+                  {/* [NEW] Disable nút nếu hết hàng — disabled:opacity-50 là Tailwind utility cho trạng thái disabled */}
+                  <button
+                    onClick={addToCart}
+                    disabled={(activeProduct.stock ?? 0) <= 0}
+                    className="w-full bg-[#333333] text-white py-5 rounded-2xl uppercase text-[10px] tracking-widest hover:bg-black transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#333333] disabled:active:scale-100"
+                  >
+                    {(activeProduct.stock ?? 0) > 0 ? 'Add to cart' : 'Hết hàng'}
+                  </button>
               </div>
            </div>
         </div>
