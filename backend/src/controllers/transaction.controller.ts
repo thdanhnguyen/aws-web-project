@@ -32,16 +32,32 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     const detailedItems = [];
     
     for (const item of items) {
+      // [NEW] Thêm pd.stock vào SELECT để kiểm tra tồn kho trước khi bán
+      // FOR UPDATE: khóa dòng lại trong transaction để tránh race condition 
+      // (2 người cùng mua 1 sản phẩm còn 1 cái, chỉ người đầu tiên thành công)
       const prodRes = await client.query(
-        `SELECT p.name, pd.price 
+        `SELECT p.name, pd.price, pd.stock, pd.id as detail_id
          FROM products p
          JOIN product_details pd ON p.id = pd.product_id
-         WHERE p.id = $1 AND p.tenant_id = $2`, 
+         WHERE p.id = $1 AND p.tenant_id = $2
+         FOR UPDATE`,
         [item.product_id, currentTenantId]
       );
       if (prodRes.rowCount === 0) throw new Error(`Product ${item.product_id} not found`);
       
       const realProduct = prodRes.rows[0];
+
+      // [NEW] Kiểm tra tồn kho: nếu stock < số lượng đặt mua thì báo lỗi ngay
+      if (realProduct.stock < item.quantity) {
+        throw new Error(`Sản phẩm "${realProduct.name}" không đủ hàng. Còn lại: ${realProduct.stock}`);
+      }
+
+      // [NEW] Trừ tồn kho ngay sau khi xác nhận đủ hàng (trong cùng 1 transaction)
+      await client.query(
+        'UPDATE product_details SET stock = stock - $1 WHERE id = $2',
+        [item.quantity, realProduct.detail_id]
+      );
+
       const itemTotal = parseFloat(realProduct.price) * item.quantity;
       subtotal += itemTotal;
       detailedItems.push({
@@ -73,7 +89,21 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     await client.query('COMMIT');
 
     try {
-      await sendReceiptEmail(customer_email, { id: invoiceId, subtotal, tax, total });
+      // [LEARN] Sau khi COMMIT thành công, gửi email bất đồng bộ (async).
+      // Lỗi email KHÔNG làm rollback giao dịch — đây là thiết kế đúng vì DB đã ghi thành công.
+      const tenantRes = await pool.query('SELECT name FROM tenants WHERE id = $1', [currentTenantId]);
+      const tenantName = tenantRes.rows[0]?.name || currentTenantId;
+
+      await sendReceiptEmail(customer_email, {
+        id: invoiceId,
+        tenantName,
+        customerName: customer_name || customer_email,
+        subtotal,
+        tax,
+        total,
+        items: detailedItems,  // Danh sách sản phẩm đầy đủ
+        createdAt: new Date()  // Thời điểm tạo đơn
+      });
       console.log(`Email sent successfully to email: ${customer_email}`);
     } catch (error) {
       console.error("Failed to send email", error);
@@ -87,31 +117,36 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    return res.status(500).json({ error: 'Failed to process transaction (3NF)' });
+    throw error;
   } finally {
     client.release();
   }
 };
 
-export const getTransactionHistory = async (req: AuthRequest, res: Response) =>{
-  try{
-    const currentTenantId = req.tenant_id
+export const getTransactionHistory = async (req: AuthRequest, res: Response) => {
+  try {
+    const currentTenantId = req.tenant_id;
+
+    // [LEARN] Dùng LEFT JOIN để lấy thêm thông tin khách hàng từ bảng customers.
+    // LEFT JOIN nghĩa là: lấy tất cả hóa đơn, kể cả những đơn không có khách hàng liên kết.
+    // Thêm payment_status để hiển thị badge Paid/Unpaid trên giao diện.
     const result = await pool.query(
-      `SELECT i.id, i.total_amount, i.created_at, c.name as customer_name
+      `SELECT i.id, i.total_amount, i.created_at, i.payment_status, c.name as customer_name
       FROM invoices i
-      LEFT JOIN customers c on i.customer_id = c.id
+      LEFT JOIN customers c ON i.customer_id = c.id
       WHERE i.tenant_id = $1
-      ORDER BY i.created_at DESC`,
+      ORDER BY i.created_at DESC
+      LIMIT 100`,  // [BEST PRACTICE] Luôn giới hạn số lượng kết quả trả về để tránh quá tải memory
       [currentTenantId]
     );
     return res.json({
       success: true,
       data: result.rows
-    })
+    });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch transaction history' });
+    throw error;
   }
-}
+};
 
 export const getTransactionStatus = async (req: AuthRequest, res: Response) => {
   try {
@@ -123,7 +158,7 @@ export const getTransactionStatus = async (req: AuthRequest, res: Response) => {
 
     return res.json({ success: true, payment_status: result.rows[0].payment_status });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch status' });
+    throw error;
   }
 };
 
@@ -162,7 +197,6 @@ export const sepayWebhook = async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Webhook Error: ", error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    throw error;
   }
 };

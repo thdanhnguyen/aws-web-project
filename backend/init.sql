@@ -46,7 +46,9 @@ CREATE TABLE product_details (
   price NUMERIC(10,2) NOT NULL,
   description TEXT,
   material VARCHAR(50) DEFAULT 'Cotton', 
-  origin VARCHAR(50) DEFAULT 'Vietnam'   
+  origin VARCHAR(50) DEFAULT 'Vietnam',
+  -- [NEW] stock: số lượng tồn kho hiện tại, trừ đi mỗi khi có đơn hàng
+  stock INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE invoices (
@@ -80,7 +82,7 @@ INSERT INTO products (id, tenant_id, name, sku_prefix) VALUES
 (2, 'LUXURY-SHOP-01', 'Quần Jean Slimfit', 'JN-SF'),
 (3, 'LUXURY-SHOP-01', 'Áo Polo Signature', 'PL-SG');
 
-INSERT INTO product_details (product_id, price, description, material) VALUES 
-(1, 105.50, 'Hoodie vải nỉ cao cấp, form rộng unisex', 'Fleece Cotton'),
-(2, 85.00, 'Quần jean co giãn, màu xám khói', 'Denim'),
-(3, 45.20, 'Áo polo thoáng khí, phong cách lịch lãm', 'Pique Cotton');
+INSERT INTO product_details (product_id, price, description, material, stock) VALUES 
+(1, 105.50, 'Hoodie vải nỉ cao cấp, form rộng unisex', 'Fleece Cotton', 50),
+(2, 85.00, 'Quần jean co giãn, màu xám khói', 'Denim', 30),
+(3, 45.20, 'Áo polo thoáng khí, phong cách lịch lãm', 'Pique Cotton', 100);

@@ -3,6 +3,8 @@ import { pool } from '../config/database';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+import { AppError } from '../utils/asyncHandler';
+
 const JWT_SECRET = process.env.JWT_SECRET || 'SUPER_SECRET_KEY_2026';
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'SUPER_REFRESH_SECRET_2026';
 
@@ -22,7 +24,7 @@ export const register = async (req: Request, res: Response) => {
     if (tenantCheck.rowCount !== 0) {
       const existingTenant = tenantCheck.rows[0];
       if (existingTenant.access_code !== access_code) {
-        return res.status(403).json({ error: 'Mã bảo mật không đúng. Vui lòng liên hệ chủ Shop!' });
+        throw AppError.forbidden('Mã bảo mật không đúng. Vui lòng liên hệ chủ Shop!');
       }
       finalTenantId = existingTenant.id;
     } else {
@@ -42,8 +44,7 @@ export const register = async (req: Request, res: Response) => {
     res.status(201).json({ success: true, message: 'Đăng ký thành công!', data: userRes.rows[0] });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error("Lỗi Đăng ký Enterprise:", error);
-    res.status(500).json({ error: 'Lỗi hệ thống khi đăng ký' });
+    throw error;
   } finally {
     client.release();
   }
@@ -54,11 +55,11 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (result.rowCount === 0) return res.status(401).json({ error: 'Sai email hoặc mật khẩu' });
+    if (result.rowCount === 0) throw AppError.unauthorized('Sai email hoặc mật khẩu');
 
     const user = result.rows[0];
     const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) return res.status(401).json({ error: 'Sai email hoặc mật khẩu' });
+    if (!isMatch) throw AppError.unauthorized('Sai email hoặc mật khẩu');
 
     // 1. Tạo Access Token (Ngắn: 10 phút như sếp yêu cầu)
     const accessToken = jwt.sign(
@@ -97,7 +98,7 @@ export const login = async (req: Request, res: Response) => {
       user: { id: user.id, email: user.email, tenant_id: user.tenant_id }
     });
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi đăng nhập hệ thống' });
+    throw error;
   }
 };
 
@@ -105,15 +106,15 @@ export const refresh = async (req: Request, res: Response) => {
   try {
     // 1. Lấy Refresh Token từ Cookie
     const refreshToken = req.cookies.refreshToken;
-    if (!refreshToken) return res.status(401).json({ error: 'Phiên làm việc hết hạn' });
+    if (!refreshToken) throw AppError.unauthorized('Phiên làm việc hết hạn');
 
     // 2. Kiểm tra Token có trong Database không
     const dbToken = await pool.query('SELECT * FROM refresh_tokens WHERE token = $1', [refreshToken]);
-    if (dbToken.rowCount === 0) return res.status(403).json({ error: 'Token không hợp lệ' });
+    if (dbToken.rowCount === 0) throw AppError.forbidden('Token không hợp lệ');
 
     // 3. Xác thực JWT Refresh Token
     jwt.verify(refreshToken, REFRESH_SECRET, (err: any, decoded: any) => {
-      if (err) return res.status(403).json({ error: 'Token đã bị giả mạo hoặc hết hạn' });
+      if (err) throw AppError.forbidden('Token đã bị giả mạo hoặc hết hạn');
 
       // 4. Cấp Access Token mới (10 phút)
       const accessToken = jwt.sign(
@@ -125,7 +126,7 @@ export const refresh = async (req: Request, res: Response) => {
       res.json({ success: true, accessToken });
     });
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi làm mới phiên làm việc' });
+    throw error;
   }
 };
 
@@ -138,6 +139,6 @@ export const logout = async (req: Request, res: Response) => {
     res.clearCookie('refreshToken');
     res.json({ success: true, message: 'Đã đăng xuất an toàn' });
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi đăng xuất' });
+    throw error;
   }
 };
