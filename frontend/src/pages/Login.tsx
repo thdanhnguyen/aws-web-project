@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -11,87 +13,144 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
-      // [LEARN] Khi đăng nhập, ta phải bật credentials: 'include' 
-      // để trình duyệt cho phép nhận Cookie từ Server
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // [FIX] Cho phép trình duyệt nhận Cookie từ Server
+        credentials: 'include',
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-
       if (data.success) {
-        // [LEARN] CHỈ lưu User info vào LocalStorage để hiện tên
-        // TUYỆT ĐỐI không lưu Access Token vào đây như sếp yêu cầu
         localStorage.setItem('pos_user', JSON.stringify(data.user));
-        
-        // Chuyển hướng về trang quản trị Dashboard (/pos)
-        navigate('/pos'); 
+        navigate('/pos');
       } else {
-        setError(data.error || 'Đăng nhập thất bại');
+        setError(data.error || 'Sai thông tin đăng nhập');
       }
-    } catch (err) {
-      setError('Lỗi kết nối server');
+    } catch {
+      setError('Không thể kết nối máy chủ');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#FBFBF9] flex items-center justify-center p-4 font-outfit relative">
-      <Link to="/" className="absolute top-8 left-8 lg:top-12 lg:left-12 text-zinc-400 hover:text-[#333333] transition-colors text-xs font-black tracking-widest uppercase flex items-center gap-2">
-        <span className="text-lg">←</span> Trang chủ
-      </Link>
-      <div className="w-full max-w-md bg-white border border-zinc-100 rounded-[1.5rem] p-8 lg:p-12 shadow-soft animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="text-center mb-10">
-          <div className="w-14 h-14 bg-[#8FA08A] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#8FA08A]/20">
-            <span className="text-white font-black text-xl">M</span>
-          </div>
-          <h1 className="text-3xl font-bold text-[#333333] mb-2 tracking-tight">MEKIE POS</h1>
-          <p className="text-zinc-400 text-[10px] uppercase tracking-[0.2em] font-medium">Bán hàng tinh tế</p>
+    <div className="min-h-screen w-full flex font-outfit">
+
+      {/* LEFT — Branding Panel */}
+      <div className="hidden lg:flex w-1/2 bg-[#333333] flex-col justify-between p-16 relative overflow-hidden">
+        {/* Decorative circles */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-[#8FA08A]/10"></div>
+        <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-[#8FA08A]/20"></div>
+        <div className="absolute top-1/2 right-0 w-48 h-48 rounded-full bg-white/5 translate-x-1/2 -translate-y-1/2"></div>
+
+        {/* Logo */}
+        <div className="flex items-center gap-4 z-10">
+          <img src="/logo.png" alt="MEKIE" className="w-12 h-12 rounded-2xl shadow-lg shadow-black/10" />
+          <span className="font-black text-xl tracking-tight">
+            <span className="text-[#4285F4]">M</span>
+            <span className="text-[#EA4335]">E</span>
+            <span className="text-[#FBBC05]">K</span>
+            <span className="text-[#4285F4]">I</span>
+            <span className="text-[#34A853]">E</span>
+            <span className="text-zinc-300 ml-1 font-medium tracking-normal">POS</span>
+          </span>
         </div>
 
-        {error && <div className="bg-red-50 text-red-500 px-4 py-3 rounded-xl text-xs mb-6 text-center border border-red-100 font-medium">{error}</div>}
+        {/* Center content */}
+        <div className="z-10">
+          <h2 className="text-5xl font-light text-white tracking-tight leading-tight mb-6">
+            Quản lý cửa hàng<br />
+            <em className="text-[#8FA08A]">thông minh hơn.</em>
+          </h2>
+          <p className="text-zinc-400 text-sm leading-relaxed max-w-xs">
+            Hệ thống POS đa người dùng, phân quyền Admin / Nhân viên, theo dõi ca làm và doanh thu theo thời gian thực.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block ml-1 font-bold">Email Address</label>
-            <input 
-              required
-              type="email" 
-              placeholder="admin@exclusive.com"
-              className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-5 py-4 text-sm text-[#333333] focus:border-[#8FA08A] transition-all outline-none"
-              value={formData.email}
-              onChange={e => setFormData({...formData, email: e.target.value})}
-            />
+        {/* Bottom stats */}
+        <div className="flex gap-10 z-10">
+          {[['Multi-tenant', 'Mỗi shop độc lập'], ['Real-time', 'Doanh thu tức thì'], ['Ca làm', 'Quản lý nhân viên']].map(([title, desc]) => (
+            <div key={title}>
+              <div className="text-white font-black text-sm mb-1">{title}</div>
+              <div className="text-zinc-500 text-xs">{desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* RIGHT — Login Form */}
+      <div className="flex-1 bg-[#FBFBF9] flex items-center justify-center p-8">
+        <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
+
+          {/* Mobile logo */}
+          <div className="flex lg:hidden items-center gap-3 mb-12">
+            <img src="/logo.png" alt="MEKIE" className="w-10 h-10 rounded-xl shadow-sm" />
+            <span className="font-black tracking-tight text-lg">
+              <span className="text-[#4285F4]">M</span>
+              <span className="text-[#EA4335]">E</span>
+              <span className="text-[#FBBC05]">K</span>
+              <span className="text-[#4285F4]">I</span>
+              <span className="text-[#34A853]">E</span>
+              <span className="text-zinc-500 ml-1 font-medium tracking-normal">POS</span>
+            </span>
           </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block ml-1 font-bold">Password</label>
-            <input 
-              required
-              type="password" 
-              placeholder="••••••••"
-              className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-5 py-4 text-sm text-[#333333] focus:border-[#8FA08A] transition-all outline-none"
-              value={formData.password}
-              onChange={e => setFormData({...formData, password: e.target.value})}
-            />
-          </div>
 
-          <button 
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#8FA08A] text-white font-bold py-4 rounded-xl hover:bg-[#7A8B76] transition-all active:scale-[0.98] text-xs uppercase tracking-widest mt-4 shadow-lg shadow-[#8FA08A]/20"
-          >
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
-        </form>
+          <h1 className="text-3xl font-light text-[#333333] tracking-tight mb-2">Đăng nhập</h1>
+          <p className="text-zinc-400 text-sm mb-10">Nhập thông tin tài khoản nhân viên hoặc admin của bạn.</p>
 
-        <p className="text-center mt-10 text-xs text-zinc-400">
-          Chưa có tài khoản? <Link to="/register" className="text-[#8FA08A] hover:underline font-bold transition-all">Đăng ký shop mới</Link>
-        </p>
+          {error && (
+            <div className="bg-red-50 border border-red-100 text-red-500 px-4 py-3 rounded-xl text-xs mb-6 font-medium">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Email</label>
+              <input
+                required
+                type="email"
+                id="login-email"
+                placeholder="nhanvien@shop.com"
+                className="w-full bg-white border border-zinc-200 rounded-2xl px-5 py-4 text-sm text-[#333333] focus:border-[#8FA08A] focus:shadow-[0_0_0_3px_rgba(143,160,138,0.15)] transition-all outline-none"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Mật khẩu</label>
+              <input
+                required
+                type="password"
+                id="login-password"
+                placeholder="••••••••"
+                className="w-full bg-white border border-zinc-200 rounded-2xl px-5 py-4 text-sm text-[#333333] focus:border-[#8FA08A] focus:shadow-[0_0_0_3px_rgba(143,160,138,0.15)] transition-all outline-none"
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+              />
+            </div>
+
+            <button
+              type="submit"
+              id="login-submit"
+              disabled={loading}
+              className="w-full bg-[#333333] text-white font-bold py-4 rounded-2xl hover:bg-black transition-all active:scale-[0.98] text-xs uppercase tracking-widest mt-2 shadow-lg shadow-black/10 disabled:opacity-50"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Đang xác thực...
+                </span>
+              ) : 'Đăng nhập'}
+            </button>
+          </form>
+
+          <p className="text-center mt-8 text-[10px] text-zinc-300 uppercase tracking-widest">MEKIE POS — Multi-tenant SaaS</p>
+        </div>
       </div>
     </div>
   );

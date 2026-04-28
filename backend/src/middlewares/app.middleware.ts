@@ -100,7 +100,7 @@ export const securityHeaders = (_req: Request, res: Response, next: NextFunction
 // nên dùng Redis để chia sẻ state giữa nhiều server instance.
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS   = 15 * 60 * 1000; // 15 phút
-const MAX_REQUESTS = 20;             // Tối đa 20 request/15 phút/IP
+const MAX_REQUESTS = 100;            // Tối đa 100 request/15 phút/IP
 
 export const authRateLimiter = (req: Request, res: Response, next: NextFunction): void => {
   // [LEARN] Lấy IP thật của client. X-Forwarded-For có khi đứng sau proxy/nginx.

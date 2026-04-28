@@ -3,6 +3,8 @@ DROP TABLE IF EXISTS refresh_tokens, invoice_items, invoices, transaction, trans
 CREATE TABLE tenants (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
+  domain VARCHAR(100),
+  access_code VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -48,7 +50,8 @@ CREATE TABLE product_details (
   material VARCHAR(50) DEFAULT 'Cotton', 
   origin VARCHAR(50) DEFAULT 'Vietnam',
   -- [NEW] stock: số lượng tồn kho hiện tại, trừ đi mỗi khi có đơn hàng
-  stock INTEGER NOT NULL DEFAULT 0
+  stock INTEGER NOT NULL DEFAULT 0,
+  category VARCHAR(100) DEFAULT 'Uncategorized'
 );
 
 CREATE TABLE invoices (
@@ -82,7 +85,7 @@ INSERT INTO products (id, tenant_id, name, sku_prefix) VALUES
 (2, 'LUXURY-SHOP-01', 'Quần Jean Slimfit', 'JN-SF'),
 (3, 'LUXURY-SHOP-01', 'Áo Polo Signature', 'PL-SG');
 
-INSERT INTO product_details (product_id, price, description, material, stock) VALUES 
-(1, 105.50, 'Hoodie vải nỉ cao cấp, form rộng unisex', 'Fleece Cotton', 50),
-(2, 85.00, 'Quần jean co giãn, màu xám khói', 'Denim', 30),
-(3, 45.20, 'Áo polo thoáng khí, phong cách lịch lãm', 'Pique Cotton', 100);
+INSERT INTO product_details (product_id, price, description, material, stock, category) VALUES 
+(1, 105.50, 'Hoodie vải nỉ cao cấp, form rộng unisex', 'Fleece Cotton', 50, 'Áo Khoác'),
+(2, 85.00, 'Quần jean co giãn, màu xám khói', 'Denim', 30, 'Quần'),
+(3, 45.20, 'Áo polo thoáng khí, phong cách lịch lãm', 'Pique Cotton', 100, 'Áo Thun');

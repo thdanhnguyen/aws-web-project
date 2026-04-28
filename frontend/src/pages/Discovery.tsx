@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function Discovery() {
   const [shops, setShops] = useState<any[]>([]);
@@ -21,9 +21,8 @@ export default function Discovery() {
     <div className="min-h-screen bg-[#FBFBF9] font-outfit text-[#333333]">
       {/* 🧥 HERO SECTION */}
       <section className="h-[60vh] flex flex-col items-center justify-center text-center p-6 bg-white border-b border-zinc-50 relative overflow-hidden">
-         <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none select-none overflow-hidden">
-            <span className="text-[20rem] font-black absolute -top-20 -left-20">MEK</span>
-            <span className="text-[20rem] font-black absolute -bottom-20 -right-20">IE</span>
+         <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none select-none overflow-hidden flex items-center justify-center">
+            <img src="/logo.png" alt="" className="w-full h-full object-cover blur-sm" />
          </div>
          <h1 className="text-6xl md:text-7xl lg:text-9xl font-light italic tracking-tighter mb-8 animate-in fade-in slide-in-from-bottom-10 duration-1000">The Collection</h1>
          <p className="max-w-xl text-zinc-400 text-sm uppercase tracking-[0.4em] font-medium leading-loose animate-in fade-in slide-in-from-bottom-20 duration-1000">Khám phá không gian mua sắm tinh tế từ những thương hiệu hàng đầu</p>

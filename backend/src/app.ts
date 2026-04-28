@@ -5,6 +5,8 @@ import productRoutes from './routes/product.routes';
 import transactionRoutes from './routes/transaction.routes';
 import authRoutes from './routes/auth.routes';
 import publicRoutes from './routes/public.routes';
+import shiftRoutes from './routes/shift.routes';
+import systemRoutes from './routes/system.routes';
 import {
   requestLogger,
   securityHeaders,
@@ -62,6 +64,8 @@ app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/shifts', shiftRoutes);
+app.use('/api/system', systemRoutes);
 
 // ═══════════════════════════════════════════════
 // TẦNG 4: Error Handling (PHẢI đứng cuối cùng)
