@@ -27,7 +27,7 @@ export const sendReceiptEmail = async (toEmail: string, receiptData: any) => {
   // Kỹ thuật này gọi là "Template Strings Aggregation" — phổ biến khi render email động.
   const itemRows = (receiptData.items || []).map((item: any) => `
     <tr>
-      <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;">${item.product_id}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;font-weight:bold;">${item.product_name || item.product_id}</td>
       <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;text-align:center;">${item.quantity}</td>
       <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;text-align:center;">${item.color || '—'} / ${item.size || '—'}</td>
       <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#8FA08A;text-align:right;font-weight:bold;">${formatVND(item.price_at_purchase)}</td>
@@ -76,6 +76,10 @@ export const sendReceiptEmail = async (toEmail: string, receiptData: any) => {
               <tr>
                 <td style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:bold;padding:6px 0;">Cửa hàng</td>
                 <td style="font-size:14px;color:#333;font-weight:600;text-align:right;padding:6px 0;">${receiptData.tenantName}</td>
+              </tr>
+              <tr>
+                <td style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:bold;padding:6px 0;">Thu ngân</td>
+                <td style="font-size:14px;color:#333;font-weight:600;text-align:right;padding:6px 0;">${receiptData.cashierName || 'Hệ thống'}</td>
               </tr>
               <tr>
                 <td style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:bold;padding:6px 0;">Ngày & Giờ</td>

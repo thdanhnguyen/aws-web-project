@@ -16,8 +16,8 @@ export const getShopProducts = async (req: Request, res: Response) => {
     try {
         const { tenantId } = req.params;
         const result = await pool.query(
-            // [NEW] Trả về stock để Public Store biết hàng còn hay hết
-            `SELECT p.id, p.name, pd.price, pd.description, pd.material, pd.origin, pd.stock
+            // [NEW] Trả về stock và category để Public Store biết hàng còn hay hết, và hiển thị danh mục
+            `SELECT p.id, p.name, pd.price, pd.description, pd.material, pd.origin, pd.stock, pd.category
              FROM products p
              JOIN product_details pd ON p.id = pd.product_id
              WHERE p.tenant_id = $1

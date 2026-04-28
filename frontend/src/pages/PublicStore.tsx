@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const bankId = import.meta.env.VITE_BANK_ID || 'Vietcombank';
 const bankAcc = import.meta.env.VITE_BANK_ACC || '1035968622';
 
@@ -135,9 +135,10 @@ export default function PublicStore() {
   return (
     <div className="min-h-screen bg-[#FBFBF9] font-outfit text-[#333333]">
       <header className="bg-white border-b border-zinc-100 p-6 flex justify-between items-center sticky top-0 z-40 shadow-sm">
-         <div className="flex items-center gap-6">
-            <Link to="/" className="text-zinc-300 hover:text-[#333333] transition-colors text-xl">←</Link>
-            <h1 className="text-xl font-black italic">MEKIE STORE</h1>
+         <div className="flex items-center gap-4">
+            <Link to="/" className="text-zinc-300 hover:text-[#333333] transition-colors text-xl mr-2">←</Link>
+            <img src="/logo.png" alt="MEKIE" className="w-10 h-10 rounded-xl shadow-sm" />
+            <h1 className="text-xl font-black italic tracking-tighter">MEKIE STORE</h1>
          </div>
          <div className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">Shop ID: <span className="text-[#8FA08A]">{tenant_id}</span></div>
       </header>
@@ -158,7 +159,7 @@ export default function PublicStore() {
             {filteredProducts.map(p => (
               <div key={p.id} onClick={() => setActiveProduct(p)} className="bg-white p-12 rounded-[4rem] border border-zinc-50 shadow-soft hover:shadow-2xl transition-all cursor-pointer group flex flex-col items-center">
                 <h3 className="font-bold text-lg mb-2 text-center text-[#333333]">{p.name}</h3>
-                <p className="text-zinc-400 text-[10px] uppercase mb-6 font-medium tracking-widest">{p.material} | {p.origin}</p>
+                <p className="text-zinc-400 text-[10px] uppercase mb-6 font-medium tracking-widest">{p.category} | {p.material} | {p.origin}</p>
                 <p className="text-[#8FA08A] font-black text-2xl">{formatVND(p.price)}</p>
                 <div className="mt-8 bg-[#333333] text-white px-10 py-3 rounded-full text-[10px] uppercase font-black tracking-widest opacity-0 group-hover:opacity-100 transition-all shadow-xl shadow-black/10">Mua ngay</div>
               </div>

@@ -2,11 +2,12 @@ import { Response, Request } from 'express';
 import { pool } from '../config/database'; 
 import { sendReceiptEmail } from '../utils/mailer';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { AppError } from '../utils/asyncHandler';
 
 export const createTransaction = async (req: AuthRequest, res: Response) => {
   const client = await pool.connect();
   try {
-    const { customer_email, customer_name, items, tenant_id, is_public } = req.body;
+    const { customer_email, customer_name, items, tenant_id, is_public, payment_method } = req.body;
     const currentTenantId = req.tenant_id || tenant_id;
 
     if (!items || items.length === 0) {
@@ -43,13 +44,13 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
          FOR UPDATE`,
         [item.product_id, currentTenantId]
       );
-      if (prodRes.rowCount === 0) throw new Error(`Product ${item.product_id} not found`);
+      if (prodRes.rowCount === 0) throw AppError.badRequest(`Sản phẩm #${item.product_id} không thuộc shop này hoặc không tồn tại`);
       
       const realProduct = prodRes.rows[0];
 
       // [NEW] Kiểm tra tồn kho: nếu stock < số lượng đặt mua thì báo lỗi ngay
       if (realProduct.stock < item.quantity) {
-        throw new Error(`Sản phẩm "${realProduct.name}" không đủ hàng. Còn lại: ${realProduct.stock}`);
+        throw AppError.badRequest(`Sản phẩm "${realProduct.name}" không đủ hàng. Còn lại: ${realProduct.stock}`);
       }
 
       // [NEW] Trừ tồn kho ngay sau khi xác nhận đủ hàng (trong cùng 1 transaction)
@@ -62,6 +63,7 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
       subtotal += itemTotal;
       detailedItems.push({
         product_id: item.product_id,
+        product_name: realProduct.name,
         quantity: item.quantity,
         price_at_purchase: realProduct.price,
         color: item.color,
@@ -73,9 +75,10 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     const tax = subtotal * taxRate;
     const total = subtotal + tax;
 
+    const initialStatus = payment_method === 'cash' ? 'Paid' : 'Unpaid';
     const insertInvoiceRes = await client.query(
-      'INSERT INTO invoices (tenant_id, customer_id, subtotal, tax, total_amount) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [currentTenantId, customerId, subtotal, tax, total]
+      'INSERT INTO invoices (tenant_id, customer_id, subtotal, tax, total_amount, payment_status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [currentTenantId, customerId, subtotal, tax, total, initialStatus]
     );
     const invoiceId = insertInvoiceRes.rows[0].id;
 
@@ -94,10 +97,19 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
       const tenantRes = await pool.query('SELECT name FROM tenants WHERE id = $1', [currentTenantId]);
       const tenantName = tenantRes.rows[0]?.name || currentTenantId;
 
+      let cashierName = "System";
+      if (req.user_id) {
+        const userRes = await pool.query('SELECT full_name, email FROM users WHERE id = $1', [req.user_id]);
+        if (userRes.rowCount && userRes.rowCount > 0) {
+          cashierName = userRes.rows[0].full_name || userRes.rows[0].email;
+        }
+      }
+
       await sendReceiptEmail(customer_email, {
         id: invoiceId,
         tenantName,
         customerName: customer_name || customer_email,
+        cashierName,
         subtotal,
         tax,
         total,

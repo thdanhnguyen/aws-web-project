@@ -8,6 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'SUPER_SECRET_KEY_2026';
 export interface AuthRequest extends Request {
   tenant_id?: string;
   user_id?: number;
+  role?: string;  // [ROLE] 'admin' | 'staff'
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
 
     req.tenant_id = decoded.tenant_id;
     req.user_id   = decoded.user_id;
+    req.role      = decoded.role || 'staff';  // [ROLE]
 
     next();
   } catch (error: any) {
@@ -133,6 +135,22 @@ export const requireBody = (req: Request, res: Response, next: NextFunction): vo
       success: false,
       error: 'Request body rỗng',
       message: 'Yêu cầu phải gửi kèm JSON body với Content-Type: application/json'
+    });
+    return;
+  }
+  next();
+};
+
+// ─────────────────────────────────────────────────────────────────
+// MIDDLEWARE 4: Chỉ cho phép Admin thực hiện hành động
+// Dùng cho quản lý sản phẩm, staff, xem báo cáo tổng quan
+// ─────────────────────────────────────────────────────────────────
+export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  if (req.role !== 'admin') {
+    res.status(403).json({
+      success: false,
+      error: 'Không có quyền truy cập',
+      message: 'Chức năng này chỉ dành cho Admin. Liên hệ quản lý shop để được cấp quyền.'
     });
     return;
   }
