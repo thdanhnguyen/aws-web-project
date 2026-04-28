@@ -9,11 +9,15 @@ A **multi-tenant, web-based Point-of-Sale (POS) SaaS application** built for mod
 | Feature | Description |
 |---|---|
 | 🏢 **Multi-Tenant** | Complete data isolation per shop using `tenant_id` |
+| 🛡️ **Super Admin** | Dedicated `/system` portal for global tenant lifecycle management |
+| 👥 **RBAC** | Role-Based Access Control (Admin / Staff) per shop |
+| ⏱️ **Shift Management** | Open/close shifts, track opening cash, and calculate total sales |
 | 🛍️ **Public Storefront** | Customer-facing shop page with product browsing & cart |
 | 🧾 **POS Cashier** | Staff dashboard for creating transactions instantly |
 | 📦 **Inventory Management** | Real-time stock tracking with out-of-stock enforcement |
-| 📧 **Email Receipts** | HTML email receipts sent automatically after checkout |
+| 📧 **Email Receipts** | HTML email receipts sent automatically after checkout (includes cashier name) |
 | 💳 **QR Payment** | SePay payment gateway integration (VietQR) |
+| 🎨 **Material Design 3** | Google standard typography (Roboto) and premium corporate branding |
 | 🔐 **JWT Auth** | Access Token (10min) + Refresh Token (7d) + HttpOnly Cookie |
 | 📊 **Transaction History** | Paginated history with Paid/Unpaid status badge |
 | 🔍 **Product Discovery** | Public marketplace to discover all registered shops |
@@ -68,7 +72,8 @@ CloudWebProject/
 
 ```sql
 tenants          -- Shops/companies (multi-tenant root)
-  └── users      -- Staff accounts per tenant
+  └── users      -- Staff accounts per tenant (Roles: admin, staff)
+       └── shifts     -- Shift records (opened_at, closed_at, total_sales)
   └── products   -- Product catalog per tenant
        └── product_details  -- Price, stock, material, description
   └── customers  -- Customer records per tenant
@@ -161,7 +166,6 @@ Open `http://localhost:5173` in your browser.
 |---|---|---|
 | `GET` | `/api/public/shops` | List all registered shops |
 | `GET` | `/api/public/shops/:tenantId/products` | Get shop's public product catalog |
-| `POST` | `/api/transactions` | Create a new transaction (checkout) |
 | `GET` | `/api/transactions/:id/status` | Poll payment status |
 | `POST` | `/api/transactions/webhook/sepay` | SePay IPN webhook endpoint |
 
@@ -180,7 +184,19 @@ Open `http://localhost:5173` in your browser.
 | `POST` | `/api/products` | Create new product |
 | `PUT` | `/api/products/:id` | Update product + stock |
 | `DELETE` | `/api/products/:id` | Delete product |
+| `POST` | `/api/transactions` | Create a new transaction (checkout) |
 | `GET` | `/api/transactions/history` | Transaction history for tenant |
+| `POST` | `/api/shifts/open` | Open a new shift for the cashier |
+| `POST` | `/api/shifts/close` | Close shift & calculate totals |
+| `GET` | `/api/shifts/current` | Get current active shift |
+
+### System Admin Routes (`/api/system`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/login` | Super Admin login |
+| `GET` | `/tenants` | List all tenants and user counts |
+| `POST` | `/tenants` | Create new tenant + admin account |
+| `DELETE` | `/tenants/:id` | Delete tenant (cascade) |
 
 ---
 
