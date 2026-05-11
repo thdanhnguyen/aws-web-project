@@ -1,14 +1,17 @@
-DROP TABLE IF EXISTS refresh_tokens, invoice_items, invoices, transaction, transactions, product_details, products, customers, users, tenants CASCADE;
+-- Active: 1778487929206@@db-pos-group2.cpc62oqseou4.ap-southeast-1.rds.amazonaws.com@5432@podgroup2
+-- 1. Xóa bảng cũ nếu có (để làm mới hoàn toàn)
+DROP TABLE IF EXISTS refresh_tokens, invoice_items, invoices, product_details, products, customers, users, tenants CASCADE;
 
+-- 2. Tạo bảng tenants (Cửa hàng)
 CREATE TABLE tenants (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
-  domain VARCHAR(100),
+  domain VARCHAR(100) UNIQUE,
   access_code VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
+-- 3. Tạo bảng users (Tài khoản nhân viên/chủ shop)
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
@@ -17,6 +20,7 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 4. Bảng lưu Refresh Token
 CREATE TABLE refresh_tokens (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -25,6 +29,7 @@ CREATE TABLE refresh_tokens (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 5. Bảng khách hàng
 CREATE TABLE customers (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
@@ -34,6 +39,7 @@ CREATE TABLE customers (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 6. Bảng sản phẩm (Thông tin chung)
 CREATE TABLE products (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
@@ -42,6 +48,7 @@ CREATE TABLE products (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 7. Chi tiết sản phẩm (Giá, Kho, Mô tả)
 CREATE TABLE product_details (
   id SERIAL PRIMARY KEY,
   product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
@@ -49,11 +56,11 @@ CREATE TABLE product_details (
   description TEXT,
   material VARCHAR(50) DEFAULT 'Cotton', 
   origin VARCHAR(50) DEFAULT 'Vietnam',
-  -- [NEW] stock: số lượng tồn kho hiện tại, trừ đi mỗi khi có đơn hàng
   stock INTEGER NOT NULL DEFAULT 0,
   category VARCHAR(100) DEFAULT 'Uncategorized'
 );
 
+-- 8. Hóa đơn
 CREATE TABLE invoices (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
@@ -65,6 +72,7 @@ CREATE TABLE invoices (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 9. Chi tiết mặt hàng trong hóa đơn
 CREATE TABLE invoice_items (
   id SERIAL PRIMARY KEY,
   invoice_id INTEGER REFERENCES invoices(id) ON DELETE CASCADE,
@@ -75,10 +83,9 @@ CREATE TABLE invoice_items (
   size VARCHAR(10)
 );
 
-ALTER TABLE tenants ADD COLUMN domain VARCHAR(100) UNIQUE;
-ALTER TABLE tenants ADD COLUMN access_code VARCHAR(50);
-
-INSERT INTO tenants (id, name) VALUES ('LUXURY-SHOP-01', 'Shop Thời Trang Outfit');
+-- 10. Chèn dữ liệu mẫu để test
+INSERT INTO tenants (id, name, domain, access_code) VALUES 
+('LUXURY-SHOP-01', 'Shop Thời Trang Outfit', 'luxury-shop', '123456');
 
 INSERT INTO products (id, tenant_id, name, sku_prefix) VALUES 
 (1, 'LUXURY-SHOP-01', 'Áo Hoodie Monochrome', 'HD-MC'),

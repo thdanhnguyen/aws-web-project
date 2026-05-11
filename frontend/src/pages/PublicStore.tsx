@@ -7,7 +7,7 @@ const bankId = import.meta.env.VITE_BANK_ID || 'Vietcombank';
 const bankAcc = import.meta.env.VITE_BANK_ACC || '1035968622';
 
 const formatVND = (amount: any) => {
-  const value = parseFloat(amount) * 1000;
+  const value = parseFloat(amount);
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 };
 
@@ -17,17 +17,13 @@ export default function PublicStore() {
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // States cho Buyer (Người mua)
   const [activeProduct, setActiveProduct] = useState<any | null>(null);
   const [tempSelection, setTempSelection] = useState({ color: 'Black', size: 'S' });
   const [customerInfo, setCustomerInfo] = useState({ name: '', email: '' });
 
-  // States cho Thanh toán SePay
   const [showPayment, setShowPayment] = useState(false);
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
   const [totalAmount, setTotalAmount] = useState<number>(0);
-
-  // ❄️ Anti-lag Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
@@ -210,7 +206,6 @@ export default function PublicStore() {
         </aside>
       </main>
 
-      {/* 🧥 MODAL: CHỌN BIẾN THỂ */}
       {activeProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white/60 backdrop-blur-xl">
            <div className="bg-white w-full max-w-xl rounded-[4rem] p-14 shadow-2xl relative border border-zinc-100 animate-in zoom-in-95">

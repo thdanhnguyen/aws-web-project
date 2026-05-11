@@ -1,10 +1,8 @@
 import nodemailer from 'nodemailer';
 
-// [LEARN] Hàm format tiền VND — nhân hệ số 1000 vì DB lưu đơn vị x1000đ
 const formatVND = (amount: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount * 1000);
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
-// [LEARN] Hàm format ngày giờ theo múi giờ Việt Nam (GMT+7)
 const formatVietnamTime = (date: Date) =>
   new Intl.DateTimeFormat('vi-VN', {
     timeZone: 'Asia/Ho_Chi_Minh',
@@ -23,8 +21,6 @@ export const sendReceiptEmail = async (toEmail: string, receiptData: any) => {
     },
   });
 
-  // [LEARN] Tạo HTML "rows" cho từng sản phẩm bằng .map() + .join('').
-  // Kỹ thuật này gọi là "Template Strings Aggregation" — phổ biến khi render email động.
   const itemRows = (receiptData.items || []).map((item: any) => `
     <tr>
       <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;font-weight:bold;">${item.product_name || item.product_id}</td>
@@ -34,8 +30,6 @@ export const sendReceiptEmail = async (toEmail: string, receiptData: any) => {
     </tr>
   `).join('');
 
-  // [LEARN] HTML Email Template — phong cách Minimalist phù hợp thương hiệu MEKIE.
-  // Gmail và Outlook render inline-style CSS tốt hơn, nên KHÔNG dùng class/stylesheet.
   const htmlBody = `
 <!DOCTYPE html>
 <html lang="vi">
@@ -145,7 +139,7 @@ export const sendReceiptEmail = async (toEmail: string, receiptData: any) => {
   const mailOptions = {
     from: `"${receiptData.tenantName} via MEKIE POS" <${process.env.EMAIL_FROM}>`,
     to: toEmail,
-    subject: `🧾 Hóa đơn #${receiptData.id} — ${receiptData.tenantName}`,
+    subject: `Hóa đơn #${receiptData.id} — ${receiptData.tenantName}`,
     text: `Cảm ơn ${receiptData.customerName} đã mua hàng tại ${receiptData.tenantName}!\n\nMã đơn: #${receiptData.id}\nTổng tiền: ${formatVND(receiptData.total)}\nNgày: ${formatVietnamTime(receiptData.createdAt)}`,
     html: htmlBody,
   };

@@ -8,6 +8,8 @@ import SystemLogin from './pages/SystemLogin';
 import SystemDashboard from './pages/SystemDashboard';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const bankId = import.meta.env.VITE_BANK_ID || 'TPBank';
+const bankAcc = import.meta.env.VITE_BANK_ACC || '00001234567';
 
 const COLORS = [
   { name: 'Black', hex: '#000000', class: 'bg-black' },
@@ -19,7 +21,7 @@ const COLORS = [
 const SIZES = ['S', 'M', 'L', 'XL'];
 
 const formatVND = (amount: any) => {
-  const value = parseFloat(amount) * 1000; 
+  const value = parseFloat(amount); 
   if (isNaN(value)) return '0 ₫';
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 };
@@ -71,12 +73,15 @@ function POSPage() {
   
   // State for checkout modal
   const [checkoutModal, setCheckoutModal] = useState<{
-    isOpen: boolean, 
-    method?: 'cash' | 'transfer', 
-    invoiceId?: string, 
-    total?: number, 
-    status?: 'selecting' | 'polling' | 'success'
-  }>({ isOpen: false, status: 'selecting' });
+    isOpen: boolean,
+    status: 'payment' | 'transfer-qr' | 'receipt';
+    method?: 'cash' | 'transfer';
+    invoiceId?: string;
+    total?: number;
+    cashGiven?: number;
+    receiptData?: any;
+  }>({ isOpen: false, status: 'payment' });
+  const [cashGivenInput, setCashGivenInput] = useState('');
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedQuery(searchQuery), 300);
@@ -252,17 +257,16 @@ function POSPage() {
   };
 
   const handleOpenCheckoutModal = () => {
-    if (cart.length === 0) return toast.error("Giỏ hàng trống");
-    setCheckoutModal({ isOpen: true, status: 'selecting', total: subtotal + tax });
+    if (cart.length === 0) return toast.error('Giỏ hàng trống');
+    setCashGivenInput('');
+    setCheckoutModal({ isOpen: true, status: 'payment', total: subtotal + tax });
   };
 
   const processCheckout = async (method: 'cash' | 'transfer') => {
     const payloadItems = cart.map(item => ({
       product_id: item.id, quantity: item.quantity, color: item.color, size: item.size
     }));
-    
-    setCheckoutModal(prev => ({ ...prev, method, status: 'polling' }));
-
+    const cashGiven = parseFloat(cashGivenInput) || 0;
     const res = await fetchWithAuth(`${API_URL}/transactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -274,48 +278,58 @@ function POSPage() {
       })
     });
     const data = await res.json();
-    
     if (data.success) {
+      fetchHistory();
       if (method === 'cash') {
-        toast.success("Thanh toán tiền mặt thành công!");
-        setCart([]);
-        setCustomerInput({ name: '', email: '' });
-        fetchHistory();
-        setCheckoutModal({ isOpen: false, status: 'selecting' });
+        setCheckoutModal(prev => ({
+          ...prev, method, status: 'receipt',
+          invoiceId: data.receipt?.id,
+          cashGiven,
+          receiptData: { ...data.receipt, cartSnapshot: cart, cashGiven, customerInput }
+        }));
       } else {
-        // Nếu là chuyển khoản, lưu lại invoiceId để hiển thị QR và bắt đầu polling
-        setCheckoutModal(prev => ({ ...prev, invoiceId: data.receipt?.id, status: 'polling' }));
+        setCheckoutModal(prev => ({ ...prev, method, status: 'transfer-qr', invoiceId: data.receipt?.id }));
       }
     } else {
-      toast.error(data.error || data.message || "Thanh toán thất bại");
-      setCheckoutModal({ isOpen: false, status: 'selecting' });
+      toast.error(data.error || data.message || 'Thanh toán thất bại');
     }
   };
 
-  // Polling trạng thái thanh toán từ SePay
+  const handleSendReceiptEmail = async () => {
+    if (!checkoutModal.invoiceId || !customerInput.email) {
+      toast.error('Vui lòng nhập email khách hàng để gửi hóa đơn!');
+      return;
+    }
+    toast.success('Đã gửi hóa đơn đến email: ' + customerInput.email);
+    setCart([]);
+    setCustomerInput({ name: '', email: '' });
+    setCheckoutModal({ isOpen: false, status: 'payment' });
+  };
+
+  const handleCloseReceipt = () => {
+    setCart([]);
+    setCustomerInput({ name: '', email: '' });
+    setCheckoutModal({ isOpen: false, status: 'payment' });
+  };
+
+  // Polling trạng thái chuyển khoản
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    if (checkoutModal.isOpen && checkoutModal.method === 'transfer' && checkoutModal.invoiceId && checkoutModal.status === 'polling') {
+    if (checkoutModal.isOpen && checkoutModal.status === 'transfer-qr' && checkoutModal.invoiceId) {
       interval = setInterval(async () => {
         try {
           const res = await fetch(`${API_URL}/transactions/${checkoutModal.invoiceId}/status`);
           const data = await res.json();
           if (data.success && data.payment_status === 'Paid') {
-            setCheckoutModal(prev => ({ ...prev, status: 'success' }));
-            toast.success("Khách hàng đã chuyển khoản thành công!");
-            setCart([]);
-            setCustomerInput({ name: '', email: '' });
-            fetchHistory();
             clearInterval(interval);
-            setTimeout(() => setCheckoutModal({ isOpen: false, status: 'selecting' }), 3000);
+            setCheckoutModal(prev => ({ ...prev, status: 'receipt', receiptData: { ...data, cartSnapshot: cart, customerInput } }));
+            toast.success('Chuyển khoản xác nhận thành công!');
           }
-        } catch (e) {
-          console.error("Polling error", e);
-        }
-      }, 3000); // Polling mỗi 3 giây
+        } catch (e) { console.error('Polling error', e); }
+      }, 3000);
     }
     return () => clearInterval(interval);
-  }, [checkoutModal]);
+  }, [checkoutModal.status, checkoutModal.invoiceId]);
 
   const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
   const tax = subtotal * 0.1;
@@ -463,8 +477,8 @@ function POSPage() {
                 <h3 className="text-2xl font-light italic mb-8">Mở ca mới</h3>
                 <form onSubmit={handleOpenShift} className="space-y-6">
                   <div>
-                    <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Tiền mặt đầu ca (VNĐ × 1000)</label>
-                    <input type="number" min="0" placeholder="VD: 2000 (= 2.000.000đ)" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-4 text-sm focus:border-[#8FA08A] outline-none" value={openingCash} onChange={e => setOpeningCash(e.target.value)} />
+                    <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Tiền mặt đầu ca (VNĐ)</label>
+                    <input type="number" min="0" placeholder="VD: 2000000" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-4 text-sm focus:border-[#8FA08A] outline-none" value={openingCash} onChange={e => setOpeningCash(e.target.value)} />
                   </div>
                   <button type="submit" className="w-full bg-[#8FA08A] text-white py-5 rounded-2xl uppercase text-[10px] font-black tracking-widest shadow-lg shadow-[#8FA08A]/20 hover:shadow-xl transition-all">
                     Xác Nhận Mở Ca
@@ -799,7 +813,7 @@ function POSPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Giá (x1000 VNĐ)</label>
+                    <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Giá (VNĐ)</label>
                     <input required type="number" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.price} onChange={e => setEditProduct({...editProduct, price: e.target.value})} />
                   </div>
                   <div>
@@ -879,68 +893,238 @@ function POSPage() {
         </div>
       )}
       {/* --- CHECKOUT MODAL --- */}
-      {checkoutModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl border border-zinc-100 flex flex-col items-center text-center">
-            {checkoutModal.status === 'selecting' && (
-              <>
-                <h3 className="text-3xl font-light italic mb-2 text-[#333333]">Thanh toán</h3>
-                <p className="text-zinc-400 text-sm mb-8">Tổng số tiền: <span className="font-bold text-[#8FA08A]">{formatVND(checkoutModal.total || total)}</span></p>
-                <div className="flex gap-4 w-full">
-                  <button onClick={() => processCheckout('cash')} className="flex-1 bg-[#F9FAFB] hover:bg-zinc-100 border border-zinc-100 p-6 rounded-3xl transition-all flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 bg-zinc-200 rounded-full flex items-center justify-center text-xl">💵</div>
-                    <span className="font-bold text-sm text-[#333333]">Tiền mặt</span>
-                  </button>
-                  <button onClick={() => processCheckout('transfer')} className="flex-1 bg-[#F9FAFB] hover:bg-emerald-50 border border-zinc-100 hover:border-emerald-100 p-6 rounded-3xl transition-all flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-xl">📱</div>
-                    <span className="font-bold text-sm text-emerald-700">Chuyển khoản</span>
-                  </button>
-                </div>
-                <button onClick={() => setCheckoutModal({isOpen: false})} className="mt-8 text-zinc-400 hover:text-zinc-600 text-xs font-bold tracking-widest uppercase">Hủy</button>
-              </>
-            )}
+      {checkoutModal.isOpen && (() => {
+        const totalAmt = checkoutModal.total || total;
+        const cashGivenNum = parseFloat(cashGivenInput) || 0;
+        const change = Math.max(0, cashGivenNum - totalAmt);
+        const rd = checkoutModal.receiptData;
 
-            {checkoutModal.status === 'polling' && checkoutModal.method === 'transfer' && (
-              <>
-                <h3 className="text-2xl font-light italic mb-2 text-[#333333]">Mã QR Thanh Toán</h3>
-                <p className="text-zinc-400 text-xs mb-6 max-w-[250px] mx-auto">Vui lòng quét mã QR dưới đây bằng ứng dụng ngân hàng. Đơn hàng sẽ tự động xác nhận.</p>
-                
-                <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm mb-6 inline-block relative">
-                  {/* [LEARN] Tích hợp SePay VietQR — Tự động điền số tài khoản, số tiền và lời nhắn là Mã Đơn */}
-                  <img 
-                    src={`https://qr.sepay.vn/img?acc=123456789&bank=MBBank&amount=${checkoutModal.total}&des=DH${checkoutModal.invoiceId}`} 
-                    alt="VietQR" 
-                    className="w-48 h-48 rounded-xl object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-10 h-10 border-4 border-[#8FA08A] border-t-transparent rounded-full animate-spin"></div>
+        /* ── SCREEN 1: PAYMENT (IMAGE 1) ── */
+        if (checkoutModal.status === 'payment') return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-6xl rounded-[2rem] shadow-2xl border border-zinc-100 overflow-hidden flex flex-col lg:flex-row max-h-[90vh] overflow-y-auto">
+              
+              {/* LEFT COLUMN: CUSTOMER & METHODS */}
+              <div className="flex-1 p-8 lg:p-12 space-y-10">
+                <div>
+                  <h3 className="text-xl font-bold text-[#333333] mb-6">Thông tin khách hàng</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <input
+                      type="text" placeholder="Số điện thoại"
+                      className="w-full bg-[#F9FAFB] rounded-xl px-5 py-4 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
+                      value={customerInput.email} 
+                      onChange={e => setCustomerInput(p => ({...p, email: e.target.value}))}
+                    />
+                    <input
+                      type="text" placeholder="Tên khách hàng"
+                      className="w-full bg-[#F9FAFB] rounded-xl px-5 py-4 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
+                      value={customerInput.name}
+                      onChange={e => setCustomerInput(p => ({...p, name: e.target.value}))}
+                    />
+                    <div className="text-xs text-zinc-400">Điểm tích lũy: 0</div>
                   </div>
                 </div>
 
-                <div className="text-[#8FA08A] font-bold text-lg mb-2">{formatVND(checkoutModal.total || total)}</div>
-                <div className="text-zinc-400 text-xs flex items-center gap-2 justify-center">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  Đang chờ thanh toán...
+                <div>
+                  <h3 className="text-xl font-bold text-[#333333] mb-6">Phương thức thanh toán</h3>
+                  <div className="space-y-3">
+                    {[
+                      { key: 'cash', label: 'Tiền mặt', icon: '💵' },
+                      { key: 'transfer', label: 'Chuyển khoản', icon: '🏦' },
+                    ].map(m => (
+                      <button
+                        key={m.key}
+                        onClick={() => setCheckoutModal(prev => ({ ...prev, method: m.key as any }))}
+                        className={`w-full flex items-center justify-center p-5 rounded-xl border-2 transition-all font-bold text-sm
+                          ${checkoutModal.method === m.key
+                            ? 'border-blue-500 bg-blue-500 text-white'
+                            : 'border-zinc-50 bg-[#F9FAFB] text-zinc-500 hover:border-zinc-100'}`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <button onClick={() => setCheckoutModal({isOpen: false, status: 'selecting'})} className="mt-8 text-zinc-400 hover:text-zinc-600 text-xs font-bold tracking-widest uppercase">Đóng</button>
-              </>
-            )}
-
-            {checkoutModal.status === 'success' && (
-              <div className="py-8">
-                <div className="w-24 h-24 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl shadow-emerald-100">
-                  ✓
-                </div>
-                <h3 className="text-3xl font-light italic mb-2 text-[#333333]">Thành công!</h3>
-                <p className="text-zinc-400 text-sm">Thanh toán đã được xác nhận</p>
               </div>
-            )}
+
+              {/* RIGHT COLUMN: BILLING & CASH */}
+              <div className="w-full lg:w-[450px] bg-white p-8 lg:p-12 border-l border-zinc-100 flex flex-col">
+                 <h3 className="text-xl font-bold text-[#333333] mb-8">Thông tin thanh toán</h3>
+                 
+                 <div className="space-y-4 mb-8">
+                    <div className="flex justify-between text-zinc-500 font-bold"><span>Tổng tiền</span><span>{formatVND(totalAmt)}</span></div>
+                    <div className="flex justify-between text-red-500 font-bold"><span>Giảm giá</span><span>- 0 ₫</span></div>
+                    <div className="flex justify-between text-blue-500 font-bold"><span>Giảm từ điểm</span><span>- 0 ₫</span></div>
+                    <div className="pt-4 border-t border-zinc-100 flex justify-between items-center">
+                       <span className="font-bold text-lg text-[#333333]">Cần trả</span>
+                       <span className="text-2xl font-black text-[#333333]">{formatVND(totalAmt)}</span>
+                    </div>
+                 </div>
+
+                 {checkoutModal.method === 'cash' && (
+                   <div className="space-y-6 flex-1">
+                      <div>
+                        <p className="text-sm font-bold text-zinc-600 mb-2">Khách đưa</p>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={cashGivenInput}
+                          onChange={e => setCashGivenInput(e.target.value)}
+                          className="w-full bg-white border border-zinc-200 rounded-lg px-4 py-3 text-lg font-bold text-[#333333] outline-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        {[500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000].map(v => (
+                          <button key={v} onClick={() => setCashGivenInput(String((parseFloat(cashGivenInput) || 0) + v))}
+                            className="bg-white border border-zinc-100 hover:bg-blue-50 p-3 rounded text-xs font-bold text-zinc-600 transition-all shadow-sm">
+                            {new Intl.NumberFormat('vi-VN').format(v)} ₫
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2">
+                         <button onClick={() => setCashGivenInput(String(Math.ceil(totalAmt)))} className="flex-1 bg-green-600 text-white py-3 rounded font-bold text-sm">Tiền chẵn</button>
+                         <button onClick={() => setCashGivenInput('')} className="flex-1 bg-red-500 text-white py-3 rounded font-bold text-sm">Xóa</button>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-4">
+                         <span className="text-[#333333] font-bold text-sm">Tiền thừa</span>
+                         <span className={`text-xl font-black ${change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {formatVND(change)}
+                         </span>
+                      </div>
+                   </div>
+                 )}
+
+                 <div className="mt-auto pt-8 space-y-3">
+                    <button
+                      onClick={() => checkoutModal.method && processCheckout(checkoutModal.method)}
+                      disabled={!checkoutModal.method || (checkoutModal.method === 'cash' && cashGivenNum < totalAmt)}
+                      className="w-full bg-green-600 text-white font-bold py-4 rounded-lg uppercase tracking-wider text-sm shadow-lg active:scale-95 transition-all disabled:opacity-40"
+                    >
+                      Xác nhận thanh toán
+                    </button>
+                    <button onClick={() => setCheckoutModal({ isOpen: false, status: 'payment' })} className="w-full bg-zinc-300 text-zinc-600 font-bold py-4 rounded-lg uppercase tracking-wider text-sm transition-all">
+                      Quay lại POS
+                    </button>
+                 </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+
+        /* ── SCREEN 2: QR TRANSFER ── */
+        if (checkoutModal.status === 'transfer-qr') return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-sm rounded-2xl p-10 shadow-2xl border border-zinc-100 flex flex-col items-center text-center">
+              <h3 className="text-xl font-bold text-[#333333] mb-1">Mã QR Thanh Toán</h3>
+              <p className="text-zinc-400 text-xs mb-8">Vui lòng quét mã dưới đây</p>
+              
+              <div className="bg-white p-4 rounded-xl border border-zinc-100 shadow-sm mb-6">
+                <img src={`https://qr.sepay.vn/img?acc=${bankAcc}&bank=${bankId}&amount=${totalAmt}&des=DH${checkoutModal.invoiceId}`}
+                  alt="VietQR" className="w-48 h-48 rounded-lg object-cover" />
+              </div>
+              
+              <div className="text-2xl font-black text-[#8FA08A] mb-4">{formatVND(totalAmt)}</div>
+              
+              <div className="flex items-center gap-2 text-zinc-400 text-xs mb-6">
+                <span className="relative flex h-2 w-2">
+                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Đang chờ thanh toán...
+              </div>
+              
+              <button onClick={() => setCheckoutModal({ isOpen: false, status: 'payment' })} className="mt-8 text-zinc-400 hover:text-zinc-600 text-xs font-bold tracking-widest uppercase">Đóng</button>
+            </div>
+          </div>
+        );
+
+        /* ── SCREEN 3: THERMAL RECEIPT (IMAGE 3) ── */
+        if (checkoutModal.status === 'receipt') {
+          const snap = rd?.cartSnapshot || cart;
+          const now = new Date();
+          const dateStr = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+          
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden flex flex-col items-center p-6">
+                <h3 className="text-lg font-bold text-[#333333] mb-4">Invoice Preview</h3>
+                <div className="bg-white w-full border border-zinc-100 shadow-inner p-8 text-zinc-800 font-mono text-[10px] leading-relaxed overflow-y-auto max-h-[60vh]" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+                  
+                  {/* Shop Header */}
+                  <div className="text-center mb-6">
+                    <p className="font-bold text-sm uppercase">{user?.tenant_id || 'DANG CAP STORE'}</p>
+                    <p>Hotline: 0123 456 789</p>
+                    <div className="my-2 border-b border-dashed border-zinc-300"></div>
+                  </div>
+
+                  {/* Order Info */}
+                  <div className="mb-4 space-y-1">
+                    <div>Date: {dateStr}</div>
+                    <div>Customer: {rd?.customerInput?.name || customerInput.name || 'Khách vãng lai'}</div>
+                    <div className="my-2 border-b border-dashed border-zinc-300"></div>
+                  </div>
+
+                  {/* Items List */}
+                  <div className="space-y-3 mb-4">
+                    {snap.map((item: any, i: number) => (
+                      <div key={i}>
+                        <div className="flex justify-between font-bold">
+                           <span>{item.name || item.product_name}</span>
+                           <span>{new Intl.NumberFormat('vi-VN').format(parseFloat(item.price) * item.quantity)}</span>
+                        </div>
+                        <div className="text-[8px] text-zinc-500">
+                           {item.quantity} x {new Intl.NumberFormat('vi-VN').format(parseFloat(item.price))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="my-2 border-b border-dashed border-zinc-300"></div>
+
+                  {/* Totals */}
+                  <div className="space-y-1 mb-6">
+                    <div className="flex justify-between"><span>Total</span><span>{formatVND(totalAmt)}</span></div>
+                    <div className="flex justify-between text-red-500"><span>Discount</span><span>-0 ₫</span></div>
+                    <div className="flex justify-between font-bold text-xs pt-1 mt-1 border-t border-zinc-300">
+                       <span>Final</span><span>{formatVND(totalAmt)}</span>
+                    </div>
+                    {checkoutModal.method === 'cash' && (
+                      <div className="pt-2">
+                        <div className="flex justify-between"><span>Cash</span><span>{formatVND(checkoutModal.cashGiven || 0)}</span></div>
+                        <div className="flex justify-between"><span>Change</span><span>{formatVND(change)}</span></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="text-center pt-4 border-t border-dashed border-zinc-300">
+                    <p className="text-[8px]">Txn: TXN-{checkoutModal.invoiceId}</p>
+                    <p className="text-[8px]">Staff: {user?.full_name || '101002'}</p>
+                    <div className="my-4"></div>
+                    <p>Thank you</p>
+                    <p>See you again!</p>
+                  </div>
+                </div>
+
+                {/* MODAL ACTIONS */}
+                <div className="w-full flex gap-3 mt-6">
+                  <button onClick={handleCloseReceipt} className="flex-1 bg-white border border-zinc-200 text-zinc-600 py-3 rounded-lg text-xs font-bold transition-all">
+                    Bỏ qua
+                  </button>
+                  <button onClick={handleSendReceiptEmail} className="flex-1 bg-[#333333] text-white py-3 rounded-lg text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-2">
+                    <span>📠</span> In hóa đơn
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
     </div>
   );
 }
