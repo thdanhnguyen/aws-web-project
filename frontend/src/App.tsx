@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import {
   ShoppingCart, History, Clock, LayoutDashboard,
   Package, Users, LogOut, Search, Plus, Minus, X,
-  Printer, CheckCircle, Loader2
+  Printer, Loader2, PanelLeftOpen, PanelLeftClose
 } from 'lucide-react';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -64,6 +64,7 @@ function POSPage() {
   const [newStaff, setNewStaff] = useState({ email: '', password: '', full_name: '' });
   const [allShifts, setAllShifts] = useState<any[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; message: string; onConfirm: () => void } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
 
@@ -73,7 +74,6 @@ function POSPage() {
 
   const [customerInput, setCustomerInput] = useState({ name: '', email: '' });
   
-  // State for checkout modal
   const [checkoutModal, setCheckoutModal] = useState<{
     isOpen: boolean,
     status: 'payment' | 'transfer-qr' | 'receipt';
@@ -412,55 +412,96 @@ function POSPage() {
 
   return (
     <div className="min-h-screen bg-[#FBFBF9] text-[#333333] font-inter flex overflow-hidden w-full">
-      {/* Sidebar (Duy trì tính nhất quán) */}
-      <aside className="w-16 md:w-20 lg:w-64 bg-white border-r border-zinc-100 flex flex-col py-4 px-2 lg:px-4 shrink-0 shadow-sm z-50">
-        <div className="flex items-center mb-10 px-2 pt-4">
-          <img src="/logo.png" alt="MEKIE" className="w-10 h-10 rounded-xl mr-3 shrink-0 shadow-lg" />
-          <h1 className="text-lg font-black hidden lg:block tracking-tighter text-center">
-            <span className="text-[#4285F4]">M</span>
-            <span className="text-[#EA4335]">E</span>
-            <span className="text-[#FBBC05]">K</span>
-            <span className="text-[#4285F4]">I</span>
-            <span className="text-[#34A853]">E</span>
-            <span className="text-zinc-500 ml-1 font-medium tracking-normal">POS</span>
-          </h1>
+      {/* Sidebar */}
+      <aside
+        className={`${
+          sidebarOpen ? 'w-64' : 'w-16'
+        } bg-white border-r border-zinc-100 flex flex-col py-4 shrink-0 shadow-sm z-50 transition-all duration-300 ease-in-out overflow-hidden`}
+      >
+        {/* Logo + Toggle */}
+        <div className="flex items-center justify-between px-3 pt-2 pb-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src="/logo.png" alt="MEKIE" className="w-9 h-9 rounded-xl shrink-0 shadow-md" />
+            {sidebarOpen && (
+              <h1 className="text-base font-black tracking-tighter whitespace-nowrap">
+                <span className="text-[#4285F4]">M</span>
+                <span className="text-[#EA4335]">E</span>
+                <span className="text-[#FBBC05]">K</span>
+                <span className="text-[#4285F4]">I</span>
+                <span className="text-[#34A853]">E</span>
+                <span className="text-zinc-400 ml-1 font-medium">POS</span>
+              </h1>
+            )}
+          </div>
+          <button
+            onClick={() => setSidebarOpen(o => !o)}
+            aria-label={sidebarOpen ? 'Thu gọn sidebar' : 'Mở rộng sidebar'}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+          >
+            {sidebarOpen
+              ? <PanelLeftClose size={16} aria-hidden="true" />
+              : <PanelLeftOpen size={16} aria-hidden="true" />}
+          </button>
         </div>
-        <nav className="flex-1 space-y-2" aria-label="Menu chính">
-          <button onClick={() => setActiveView('sell')} aria-label="Bán hàng" aria-current={activeView === 'sell' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'sell' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <ShoppingCart size={18} aria-hidden="true" /> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Bán Hàng</span>
-          </button>
-          <button onClick={() => setActiveView('history')} aria-label="Lịch sử giao dịch" aria-current={activeView === 'history' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'history' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <History size={18} aria-hidden="true" /> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Lịch Sử</span>
-          </button>
-          <button onClick={() => setActiveView('shift')} aria-label="Quản lý ca làm" aria-current={activeView === 'shift' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'shift' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <Clock size={18} aria-hidden="true" />
-            <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Ca Làm</span>
-            {currentShift && <span aria-hidden="true" className="hidden lg:inline ml-auto w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>}
-          </button>
-          {user?.role === 'admin' && (
-            <>
-              <button onClick={() => setActiveView('dashboard')} aria-label="Tổng quan doanh thu" aria-current={activeView === 'dashboard' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'dashboard' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <LayoutDashboard size={18} aria-hidden="true" /> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Tổng Quan</span>
-              </button>
-              <button onClick={() => setActiveView('warehouse')} aria-label="Quản lý kho hàng" aria-current={activeView === 'warehouse' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'warehouse' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <Package size={18} aria-hidden="true" /> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Kho Hàng</span>
-              </button>
-              <button onClick={() => setActiveView('staff')} aria-label="Quản lý nhân viên" aria-current={activeView === 'staff' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'staff' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <Users size={18} aria-hidden="true" /> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Nhân Viên</span>
-              </button>
-            </>
-          )}
+
+        {/* Nav */}
+        <nav className="flex-1 space-y-1 px-2" aria-label="Menu chính">
+          {([
+            { view: 'sell',      icon: <ShoppingCart size={18} />, label: 'Bán Hàng',   ariaLabel: 'Bán hàng',           adminOnly: false },
+            { view: 'history',   icon: <History size={18} />,     label: 'Lịch Sử',    ariaLabel: 'Lịch sử giao dịch',  adminOnly: false },
+            { view: 'shift',     icon: <Clock size={18} />,       label: 'Ca Làm',      ariaLabel: 'Quản lý ca làm',     adminOnly: false },
+            { view: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Tổng Quan', ariaLabel: 'Tổng quan doanh thu', adminOnly: true },
+            { view: 'warehouse', icon: <Package size={18} />,    label: 'Kho Hàng',    ariaLabel: 'Quản lý kho hàng',   adminOnly: true },
+            { view: 'staff',     icon: <Users size={18} />,       label: 'Nhân Viên',   ariaLabel: 'Quản lý nhân viên',  adminOnly: true },
+          ] as const).filter(item => !item.adminOnly || user?.role === 'admin').map(item => (
+            <button
+              key={item.view}
+              onClick={() => setActiveView(item.view as any)}
+              aria-label={item.ariaLabel}
+              aria-current={activeView === item.view ? 'page' : undefined}
+              title={!sidebarOpen ? item.label : undefined}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all font-semibold ${
+                activeView === item.view
+                  ? 'bg-[#F0F4F0] text-[#8FA08A]'
+                  : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'
+              }`}
+            >
+              <span aria-hidden="true" className="shrink-0">{item.icon}</span>
+              {sidebarOpen && (
+                <span className="uppercase text-[10px] tracking-widest whitespace-nowrap">{item.label}</span>
+              )}
+              {item.view === 'shift' && currentShift && sidebarOpen && (
+                <span aria-hidden="true" className="ml-auto w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0"></span>
+              )}
+              {item.view === 'shift' && currentShift && !sidebarOpen && (
+                <span aria-hidden="true" className="absolute ml-7 -mt-5 w-2 h-2 bg-emerald-400 rounded-full"></span>
+              )}
+            </button>
+          ))}
         </nav>
-        <div className="pt-6 border-t border-zinc-50 p-2">
-           <div className="hidden lg:block uppercase text-[10px] text-zinc-300 font-bold tracking-widest mb-1">{user?.email}</div>
-           <div className="hidden lg:flex items-center gap-2 mb-1">
-             <span className="text-[#8FA08A] text-xs font-black truncate">{user?.full_name || user?.tenant_id}</span>
-             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${user?.role === 'admin' ? 'bg-amber-50 text-amber-600' : 'bg-zinc-100 text-zinc-500'}`}>{user?.role}</span>
-           </div>
-           <button onClick={handleLogout} className="w-full mt-4 flex items-center gap-3 p-4 rounded-xl hover:bg-red-50 text-zinc-400 hover:text-red-400 transition-all text-[10px] uppercase font-bold tracking-widest">
-             <LogOut size={16} aria-hidden="true" />
-             <span className="hidden lg:inline">Đăng xuất</span>
-           </button>
+
+        {/* User info + Logout */}
+        <div className="border-t border-zinc-100 px-2 pt-4 pb-2">
+          {sidebarOpen && (
+            <div className="px-2 mb-3">
+              <div className="text-[10px] text-zinc-300 font-bold tracking-widest truncate">{user?.email}</div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[#8FA08A] text-xs font-black truncate">{user?.full_name || user?.tenant_id}</span>
+                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
+                  user?.role === 'admin' ? 'bg-amber-50 text-amber-600' : 'bg-zinc-100 text-zinc-500'
+                }`}>{user?.role}</span>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            aria-label="Đăng xuất"
+            title={!sidebarOpen ? 'Đăng xuất' : undefined}
+            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 text-zinc-400 hover:text-red-400 transition-all"
+          >
+            <LogOut size={16} aria-hidden="true" className="shrink-0" />
+            {sidebarOpen && <span className="text-[10px] uppercase font-bold tracking-widest">Đăng xuất</span>}
+          </button>
         </div>
       </aside>
 
