@@ -17,6 +17,8 @@ CREATE TABLE users (
   tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
   email VARCHAR(100) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(100),
+  role VARCHAR(20) DEFAULT 'staff' CHECK (role IN ('admin', 'staff')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -44,17 +46,17 @@ CREATE TABLE products (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
-  sku_prefix VARCHAR(10), 
+  sku_prefix VARCHAR(10),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Chi tiết sản phẩm (Giá, Kho, Mô tả)
+-- 7. Chi tiết sản phẩm (Giá, Kho, Mô tả) — 1-1 với products
 CREATE TABLE product_details (
   id SERIAL PRIMARY KEY,
-  product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+  product_id INTEGER UNIQUE REFERENCES products(id) ON DELETE CASCADE,
   price NUMERIC(10,2) NOT NULL,
   description TEXT,
-  material VARCHAR(50) DEFAULT 'Cotton', 
+  material VARCHAR(50) DEFAULT 'Cotton',
   origin VARCHAR(50) DEFAULT 'Vietnam',
   stock INTEGER NOT NULL DEFAULT 0,
   category VARCHAR(100) DEFAULT 'Uncategorized'
@@ -68,7 +70,7 @@ CREATE TABLE invoices (
   subtotal NUMERIC(10,2) NOT NULL,
   tax NUMERIC(10,2) NOT NULL,
   total_amount NUMERIC(10,2) NOT NULL,
-  payment_status VARCHAR(20) DEFAULT 'Unpaid',
+  payment_status VARCHAR(20) DEFAULT 'Unpaid' CHECK (payment_status IN ('Paid', 'Unpaid')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -83,7 +85,16 @@ CREATE TABLE invoice_items (
   size VARCHAR(10)
 );
 
--- 10. Chèn dữ liệu mẫu để test
+-- 10. Index hỗ trợ performance cho các query hay dùng
+CREATE INDEX idx_users_tenant_id ON users(tenant_id);
+CREATE INDEX idx_products_tenant_id ON products(tenant_id);
+CREATE INDEX idx_customers_tenant_id ON customers(tenant_id);
+CREATE INDEX idx_invoices_tenant_id ON invoices(tenant_id);
+CREATE INDEX idx_invoices_tenant_created ON invoices(tenant_id, created_at DESC);
+CREATE INDEX idx_invoice_items_invoice_id ON invoice_items(invoice_id);
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+
+-- 11. Chèn dữ liệu mẫu để test
 INSERT INTO tenants (id, name, domain, access_code) VALUES 
 ('LUXURY-SHOP-01', 'Shop Thời Trang Outfit', 'luxury-shop', '123456');
 

@@ -1,130 +1,131 @@
 # MEKIE POS — SaaS Point-of-Sale System
 
-A **multi-tenant, web-based Point-of-Sale (POS) SaaS application** built for modern retail businesses. Each tenant (shop/company) operates in a fully isolated environment with dedicated inventory, transactions, and customer data.
+A multi-tenant, web-based Point-of-Sale (POS) SaaS application built for modern retail businesses. Each shop operates in an isolated environment with dedicated inventory, transactions, and customer data.
+
+## 🚀 Tech Stack
+- **Frontend**: React, TypeScript, Vite, TailwindCSS
+- **Backend**: Node.js, Express, TypeScript
+- **Database**: PostgreSQL
+- **Infrastructure**: AWS (EC2, RDS, S3, CloudFront, Route53, SES)
+- **Integrations**: SePay Payment Gateway (VietQR)
 
 ---
 
-## ✨ Key Features
+## 🏗️ AWS Architecture (To-Be)
 
-| Feature | Description |
-|---|---|
-| 🏢 **Multi-Tenant** | Complete data isolation per shop using `tenant_id` |
-| 🛡️ **Super Admin** | Dedicated `/system` portal for global tenant lifecycle management |
-| 👥 **RBAC** | Role-Based Access Control (Admin / Staff) per shop |
-| ⏱️ **Shift Management** | Open/close shifts, track opening cash, and calculate total sales |
-| 🛍️ **Public Storefront** | Customer-facing shop page with product browsing & cart |
-| 🧾 **POS Cashier** | Staff dashboard for creating transactions instantly |
-| 📦 **Inventory Management** | Real-time stock tracking with out-of-stock enforcement |
-| 📧 **Email Receipts** | HTML email receipts sent automatically after checkout (includes cashier name) |
-| 💳 **QR Payment** | SePay payment gateway integration (VietQR) |
-| 🎨 **Material Design 3** | Google standard typography (Roboto) and premium corporate branding |
-| 🔐 **JWT Auth** | Access Token (10min) + Refresh Token (7d) + HttpOnly Cookie |
-| 📊 **Transaction History** | Paginated history with Paid/Unpaid status badge |
-| 🔍 **Product Discovery** | Public marketplace to discover all registered shops |
+The system is designed for AWS deployment utilizing a clean, scalable architecture:
 
----
+```text
+// To-Be: Clean AWS SaaS Architecture (High Availability + Multi-Tenant)
+User [icon: user]
+Super Admin [icon: user]
 
-## 🏗️ Architecture
+AWS_Cloud [icon: aws] {
 
+  DNS_CDN [color: orange] {
+    Route_53 [icon: aws-route-53]
+    CloudFront [icon: aws-cloudfront]
+  }
+
+  S3_Frontend [label: "S3 (React Static)", icon: aws-s3]
+
+  VPC [color: green, icon: aws-vpc] {
+
+    Public_Subnets [color: lightblue] {
+      ALB [label: "Application Load Balancer (Public)", icon: aws-elastic-load-balancing]
+    }
+
+    Private_Subnets [color: lightgreen] {
+      App_Tier [color: yellow] {
+        EC2_A [label: "EC2 Backend (AZ A)", icon: aws-ec2]
+      }
+
+      Database_Tier [color: red] {
+        RDS_Primary [label: "RDS Primary (AZ A)", icon: aws-rds]
+      }
+    }
+  }
+
+  Supporting [color: blue] {
+    SES [icon: aws-simple-email-service]
+    Secrets [icon: aws-secrets-manager]
+    CloudWatch [icon: aws-cloudwatch]
+  }
+
+  External_Integrations [color: purple] {
+    SePay_Webhook [label: "SePay API (External)", icon: webhook]
+  }
+}
+
+// ── Main Flow ──
+User > Route_53
+Super Admin > Route_53
+
+// Frontend
+Route_53 > CloudFront 
+CloudFront > S3_Frontend
+
+// Backend API
+Route_53 > ALB 
+ALB > EC2_A
+
+// Database
+EC2_A > RDS_Primary
+
+// Supporting Services
+App_Tier > SES 
+App_Tier > Secrets 
+App_Tier > CloudWatch 
+
+// External Payment Service
+App_Tier > SePay_Webhook 
 ```
-CloudWebProject/
-├── backend/                    # Node.js + Express + TypeScript
-│   ├── src/
-│   │   ├── app.ts              # Express app + middleware pipeline
-│   │   ├── server.ts           # HTTP server entry point
-│   │   ├── config/
-│   │   │   └── database.ts     # PostgreSQL connection pool (NeonDB)
-│   │   ├── controllers/
-│   │   │   ├── auth.controller.ts
-│   │   │   ├── product.controller.ts
-│   │   │   ├── public.controller.ts
-│   │   │   └── transaction.controller.ts
-│   │   ├── middlewares/
-│   │   │   ├── auth.middleware.ts   # JWT auth + validateIdParam + requireBody
-│   │   │   └── app.middleware.ts    # Logger, RateLimiter, SecurityHeaders, ErrorHandler
-│   │   ├── routes/
-│   │   │   ├── auth.routes.ts
-│   │   │   ├── product.routes.ts
-│   │   │   ├── public.routes.ts
-│   │   │   └── transaction.routes.ts
-│   │   └── utils/
-│   │       ├── asyncHandler.ts     # Async error wrapper + AppError class
-│   │       └── mailer.ts           # Nodemailer HTML receipt email
-│   ├── init.sql                # Full DB schema (run once to initialize)
-│   ├── add_stock.sql           # Migration: add stock column to product_details
-│   └── .env                    # Environment variables (see setup below)
-│
-└── frontend/                   # React + TypeScript + Vite + TailwindCSS
-    └── src/
-        ├── App.tsx             # Main POS dashboard (Sell, Warehouse, History views)
-        ├── main.tsx            # React entry point
-        ├── pages/
-        │   ├── Login.tsx
-        │   ├── Register.tsx
-        │   ├── Discovery.tsx   # Public shop discovery page
-        │   └── PublicStore.tsx # Customer-facing storefront
-        └── index.css           # Global styles
-```
 
 ---
 
-## 🗄️ Database Schema (3NF — PostgreSQL)
-
-```sql
-tenants          -- Shops/companies (multi-tenant root)
-  └── users      -- Staff accounts per tenant (Roles: admin, staff)
-       └── shifts     -- Shift records (opened_at, closed_at, total_sales)
-  └── products   -- Product catalog per tenant
-       └── product_details  -- Price, stock, material, description
-  └── customers  -- Customer records per tenant
-  └── invoices   -- Transaction headers (payment_status: Paid/Unpaid)
-       └── invoice_items    -- Line items per transaction
-refresh_tokens   -- JWT refresh token store (revocable)
-```
-
----
-
-## 🚀 Getting Started
+## 🛠️ Getting Started
 
 ### Prerequisites
 - Node.js >= 18
-- PostgreSQL (or NeonDB cloud)
-- Gmail account with App Password (for email receipts)
+- PostgreSQL (Local or Cloud)
+- Gmail account (for SMTP email receipts)
 
-### 1. Clone & Install
+### 1. Installation
+
+Clone the repository and install dependencies:
 
 ```bash
-# Backend
+# Install backend dependencies
 cd backend
 npm install
 
-# Frontend
+# Install frontend dependencies
 cd ../frontend
 npm install
 ```
 
-### 2. Configure Environment Variables
+### 2. Environment Configuration
+
+Create `.env` files based on the structure below.
 
 **`backend/.env`**
 ```env
 PORT=5000
-DATABASE_URL=your_postgresql_connection_string
+DATABASE_URL=postgresql://user:password@localhost:5432/pos_db
 
-# Email (Gmail App Password)
+# JWT Secrets
+JWT_SECRET=your_jwt_secret
+REFRESH_SECRET=your_refresh_secret
+
+# Email Config (Gmail App Password)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_16_char_app_password
+SMTP_PASS=your_app_password
 EMAIL_FROM=your_email@gmail.com
 
-# Security (change in production!)
-JWT_SECRET=your_jwt_secret_here
-REFRESH_SECRET=your_refresh_secret_here
-
-# SePay Payment Gateway
+# SePay Webhook verification
 SEPAY_API_KEY=your_sepay_api_key
-SEPAY_MERCHANT_ID=your_merchant_id
-SEPAY_SECRET_KEY=your_secret_key
 ```
 
 **`frontend/.env`**
@@ -132,153 +133,26 @@ SEPAY_SECRET_KEY=your_secret_key
 VITE_API_URL=http://localhost:5000
 ```
 
-### 3. Initialize Database
+### 3. Database Initialization
 
-Open pgAdmin or any PostgreSQL client and run:
+Execute the SQL script to initialize the tables and sample data:
 ```bash
-# Full initialization (tables + sample data)
-backend/init.sql
-
-# If upgrading existing DB (add stock column)
-backend/add_stock.sql
+# Run via pgAdmin, DBeaver, or command line:
+psql -U postgres -d pos_db -f backend/init.sql
 ```
 
 ### 4. Run Development Servers
 
+Start both servers in separate terminals:
+
 ```bash
-# Terminal 1 — Backend (port 5000)
+# Terminal 1 — Backend
 cd backend
 npm run dev
 
-# Terminal 2 — Frontend (port 5173)
+# Terminal 2 — Frontend
 cd frontend
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser.
-
----
-
-## 🔌 API Reference
-
-### Public Routes (no auth required)
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/public/shops` | List all registered shops |
-| `GET` | `/api/public/shops/:tenantId/products` | Get shop's public product catalog |
-| `GET` | `/api/transactions/:id/status` | Poll payment status |
-| `POST` | `/api/transactions/webhook/sepay` | SePay IPN webhook endpoint |
-
-### Auth Routes
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/auth/register` | Register new shop + staff account |
-| `POST` | `/api/auth/login` | Login → returns Access Token |
-| `POST` | `/api/auth/refresh` | Refresh Access Token using HttpOnly cookie |
-| `POST` | `/api/auth/logout` | Revoke refresh token + clear cookie |
-
-### Protected Routes (requires `Authorization: Bearer <token>`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/products` | List products for logged-in tenant |
-| `POST` | `/api/products` | Create new product |
-| `PUT` | `/api/products/:id` | Update product + stock |
-| `DELETE` | `/api/products/:id` | Delete product |
-| `POST` | `/api/transactions` | Create a new transaction (checkout) |
-| `GET` | `/api/transactions/history` | Transaction history for tenant |
-| `POST` | `/api/shifts/open` | Open a new shift for the cashier |
-| `POST` | `/api/shifts/close` | Close shift & calculate totals |
-| `GET` | `/api/shifts/current` | Get current active shift |
-
-### System Admin Routes (`/api/system`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/login` | Super Admin login |
-| `GET` | `/tenants` | List all tenants and user counts |
-| `POST` | `/tenants` | Create new tenant + admin account |
-| `DELETE` | `/tenants/:id` | Delete tenant (cascade) |
-
----
-
-## 💳 SePay Payment Gateway Setup
-
-MEKIE POS integrates with **SePay Payment Gateway** for QR bank transfer payments.
-
-### Step 1 — Register & Get Credentials
-1. Go to [https://my.sepay.vn/register](https://my.sepay.vn/register)
-2. Navigate to **Cổng thanh toán → Đăng ký → Bắt đầu ngay**
-3. Start with **Sandbox** for testing
-4. Copy your **MERCHANT ID** and **SECRET KEY**
-
-### Step 2 — Configure Environment
-```env
-SEPAY_API_KEY=your_sepay_api_key        # For webhook verification
-SEPAY_MERCHANT_ID=your_merchant_id      # For checkout initiation
-SEPAY_SECRET_KEY=your_secret_key        # For signature generation
-```
-
-### Step 3 — Configure IPN (Webhook)
-In your SePay dashboard, set the IPN URL to:
-```
-https://your-backend-domain.com/api/transactions/webhook/sepay
-```
-
-The webhook receives `ORDER_PAID` notifications and automatically marks invoices as `Paid`.
-
-### Step 4 — Go Live
-1. Link a real bank account at [https://my.sepay.vn](https://my.sepay.vn)
-2. Switch to **Production** mode
-3. Update `MERCHANT_ID`, `SECRET_KEY` from Sandbox → Production values
-4. Production checkout endpoint: `https://pay.sepay.vn/v1/checkout/init`
-
-> ⚠️ **Note:** The current webhook implementation uses `SEPAY_API_KEY` header verification. In production, also validate the request signature using `SEPAY_SECRET_KEY` for maximum security.
-
----
-
-## 🔒 Security Architecture
-
-```
-Request → securityHeaders → requestLogger → payloadSizeGuard
-       → CORS → JSON parser
-       → [/api/auth] → authRateLimiter (20 req/15min/IP)
-       → Routes
-       → notFoundHandler (404)
-       → globalErrorHandler (catches all unhandled errors)
-```
-
-**JWT Flow:**
-- Login → `accessToken` (10min, in JSON) + `refreshToken` (7d, HttpOnly cookie)
-- API calls → `Authorization: Bearer <accessToken>`
-- Token expired → `POST /api/auth/refresh` (auto-refresh in frontend)
-- Logout → delete from DB + clear cookie
-
----
-
-## 🧑‍💻 Multi-Tenant Design
-
-Every database table has a `tenant_id` column. All queries filter by `tenant_id` extracted from the JWT payload — ensuring **complete data isolation** between shops.
-
-**Registration flow:**
-- If email domain is new → create new tenant + first staff user
-- If email domain exists → verify `access_code` → add user to existing tenant
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| **Frontend** | React 19, TypeScript, Vite, TailwindCSS |
-| **Routing** | React Router DOM v7 |
-| **Backend** | Node.js, Express 5, TypeScript |
-| **Database** | PostgreSQL (NeonDB Serverless) |
-| **Auth** | JWT (jsonwebtoken) + bcryptjs |
-| **Email** | Nodemailer (Gmail SMTP) |
-| **Payment** | SePay Payment Gateway |
-| **Dev Tools** | tsx (watch mode), pgAdmin |
-
----
-
-## 📝 License
-
-Academic project — built for SaaS POS demonstration purposes.
+Access the POS dashboard at `http://localhost:5173`.
