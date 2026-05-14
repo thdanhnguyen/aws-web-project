@@ -59,6 +59,7 @@ function POSPage() {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [newStaff, setNewStaff] = useState({ email: '', password: '', full_name: '' });
   const [allShifts, setAllShifts] = useState<any[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; message: string; onConfirm: () => void } | null>(null);
   const navigate = useNavigate();
 
   // [LEARN] Anti-lag Search: Tách state thành 2 lớp
@@ -356,16 +357,22 @@ function POSPage() {
 
   // Handler đóng ca
   const handleCloseShift = async () => {
-    if (!window.confirm('Xác nhận đóng ca làm việc?')) return;
-    const res = await fetchWithAuth(`${API_URL}/shifts/close`, { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      toast.success('Đóng ca thành công!');
-      setCurrentShift(null);
-      setAllShifts(prev => [data.data, ...prev]);
-    } else {
-      toast.error(data.error || 'Lỗi đóng ca');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      message: 'Xác nhận đóng ca làm việc?',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const res = await fetchWithAuth(`${API_URL}/shifts/close`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          toast.success('Đóng ca thành công!');
+          setCurrentShift(null);
+          setAllShifts(prev => [data.data, ...prev]);
+        } else {
+          toast.error(data.error || 'Lỗi đóng ca');
+        }
+      }
+    });
   };
 
   // Handler tạo staff
@@ -387,11 +394,17 @@ function POSPage() {
   };
 
   const handleDeleteStaff = async (id: number) => {
-    if (!window.confirm('Xóa nhân viên này?')) return;
-    const res = await fetchWithAuth(`${API_URL}/auth/staff/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (data.success) { toast.success('Đã xóa nhân viên'); fetchStaff(); }
-    else toast.error(data.error || 'Lỗi xóa nhân viên');
+    setConfirmDialog({
+      isOpen: true,
+      message: 'Xóa nhân viên này?',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const res = await fetchWithAuth(`${API_URL}/auth/staff/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) { toast.success('Đã xóa nhân viên'); fetchStaff(); }
+        else toast.error(data.error || 'Lỗi xóa nhân viên');
+      }
+    });
   };
 
   if (loading) return <div className="min-h-screen bg-[#FBFBF9] flex items-center justify-center font-outfit uppercase tracking-widest text-zinc-400 text-xs">Authenticating...</div>;
@@ -411,32 +424,28 @@ function POSPage() {
             <span className="text-zinc-500 ml-1 font-medium tracking-normal">POS</span>
           </h1>
         </div>
-        <nav className="flex-1 space-y-2">
-          {/* Bán Hàng — tất cả role đều thấy */}
-          <button onClick={() => setActiveView('sell')} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'sell' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <span className="text-lg">🛒</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Bán Hàng</span>
+        <nav className="flex-1 space-y-2" aria-label="Menu chính">
+          <button onClick={() => setActiveView('sell')} aria-label="Bán hàng" aria-current={activeView === 'sell' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'sell' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
+            <span aria-hidden="true" className="text-lg">🛒</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Bán Hàng</span>
           </button>
-          {/* Lịch Sử — tất cả role */}
-          <button onClick={() => setActiveView('history')} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'history' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <span className="text-lg">📜</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Lịch Sử</span>
+          <button onClick={() => setActiveView('history')} aria-label="Lịch sử giao dịch" aria-current={activeView === 'history' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'history' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
+            <span aria-hidden="true" className="text-lg">📜</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Lịch Sử</span>
           </button>
-          {/* Ca Làm — tất cả role */}
-          <button onClick={() => setActiveView('shift')} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'shift' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <span className="text-lg">⏱️</span>
+          <button onClick={() => setActiveView('shift')} aria-label="Quản lý ca làm" aria-current={activeView === 'shift' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'shift' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
+            <span aria-hidden="true" className="text-lg">⏱️</span>
             <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Ca Làm</span>
-            {currentShift && <span className="hidden lg:inline ml-auto w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>}
+            {currentShift && <span aria-hidden="true" className="hidden lg:inline ml-auto w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>}
           </button>
-          {/* ADMIN ONLY */}
           {user?.role === 'admin' && (
             <>
-              <button onClick={() => setActiveView('dashboard')} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'dashboard' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <span className="text-lg">📊</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Tổng Quan</span>
+              <button onClick={() => setActiveView('dashboard')} aria-label="Tổng quan doanh thu" aria-current={activeView === 'dashboard' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'dashboard' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
+                <span aria-hidden="true" className="text-lg">📊</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Tổng Quan</span>
               </button>
-              <button onClick={() => setActiveView('warehouse')} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'warehouse' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <span className="text-lg">📦</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Kho Hàng</span>
+              <button onClick={() => setActiveView('warehouse')} aria-label="Quản lý kho hàng" aria-current={activeView === 'warehouse' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'warehouse' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
+                <span aria-hidden="true" className="text-lg">📦</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Kho Hàng</span>
               </button>
-              <button onClick={() => setActiveView('staff')} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'staff' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <span className="text-lg">👥</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Nhân Viên</span>
+              <button onClick={() => setActiveView('staff')} aria-label="Quản lý nhân viên" aria-current={activeView === 'staff' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'staff' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
+                <span aria-hidden="true" className="text-lg">👥</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Nhân Viên</span>
               </button>
             </>
           )}
@@ -623,9 +632,12 @@ function POSPage() {
             <div className="flex-1">
                 <header className="mb-10 lg:mb-14 border-b border-zinc-100 pb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                    <h2 className="text-5xl font-light italic text-[#333333]">Storefront</h2>
+                   <label htmlFor="search-sell" className="sr-only">Tìm sản phẩm theo tên</label>
                    <input 
+                      id="search-sell"
                       type="text" 
                       placeholder="Tìm món hàng..." 
+                      aria-label="Tìm sản phẩm theo tên"
                       className="bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full lg:w-72 font-medium"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -677,17 +689,19 @@ function POSPage() {
                         {/* Nút +/- số lượng */}
                         <div className="flex items-center gap-1 shrink-0">
                           <button
+                            aria-label={`Giảm số lượng ${item.name}`}
                             onClick={() => setCart(c => c.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
-                            className="w-6 h-6 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors text-xs font-black flex items-center justify-center"
-                          >−</button>
-                          <span className="w-6 text-center text-xs font-black">{item.quantity}</span>
+                            className="w-11 h-11 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors text-xs font-black flex items-center justify-center"
+                          ><span aria-hidden="true">−</span></button>
+                          <span aria-live="polite" aria-label={`Số lượng ${item.name}: ${item.quantity}`} className="w-6 text-center text-xs font-black">{item.quantity}</span>
                           <button
+                            aria-label={`Tăng số lượng ${item.name}`}
                             onClick={() => setCart(c => c.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}
-                            className="w-6 h-6 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors text-xs font-black flex items-center justify-center"
-                          >+</button>
+                            className="w-11 h-11 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors text-xs font-black flex items-center justify-center"
+                          ><span aria-hidden="true">+</span></button>
                         </div>
                         <span className="font-bold text-xs shrink-0 w-16 text-right">{formatVND(parseFloat(item.price) * item.quantity)}</span>
-                        <button onClick={() => setCart(c => c.filter((_, i) => i !== idx))} className="text-zinc-300 hover:text-red-400 transition-colors text-sm leading-none shrink-0">✕</button>
+                        <button aria-label={`Xóa ${item.name} khỏi giỏ hàng`} onClick={() => setCart(c => c.filter((_, i) => i !== idx))} className="w-11 h-11 flex items-center justify-center text-zinc-300 hover:text-red-400 transition-colors text-sm leading-none shrink-0"><span aria-hidden="true">✕</span></button>
                       </div>
                     ))}
                     {cart.length === 0 && <p className="text-center text-zinc-300 text-xs italic py-8">Chưa có sản phẩm</p>}
@@ -763,9 +777,12 @@ function POSPage() {
            <div className="animate-in slide-in-from-bottom-10 duration-500">
              <header className="mb-14 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
                 <h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Warehouse</h2>
+                <label htmlFor="search-warehouse" className="sr-only">Tìm sản phẩm trong kho</label>
                 <input 
+                   id="search-warehouse"
                    type="text" 
                    placeholder="Tìm sản phẩm trong kho..." 
+                   aria-label="Tìm sản phẩm trong kho"
                    className="bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full lg:w-80 font-medium"
                    value={searchQuery}
                    onChange={(e) => setSearchQuery(e.target.value)}
@@ -803,9 +820,9 @@ function POSPage() {
 
       {/* MODAL: ĐA NĂNG (DÙNG CHO CẢ THÊM MỚI VÀ SỬA) */}
       {editProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white/50 backdrop-blur-xl animate-in fade-in duration-300">
+        <div role="dialog" aria-modal="true" aria-labelledby="modal-product-title" className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white/50 backdrop-blur-xl animate-in fade-in duration-300">
            <div className="bg-white border border-zinc-100 w-full max-w-lg rounded-[2.5rem] p-12 shadow-2xl animate-in zoom-in-95 duration-500">
-             <h3 className="text-2xl font-light italic mb-10">{isAddingNew ? 'Nhập hàng mới' : 'Cập nhật kho'}</h3>
+             <h3 id="modal-product-title" className="text-2xl font-light italic mb-10">{isAddingNew ? 'Nhập hàng mới' : 'Cập nhật kho'}</h3>
              <form onSubmit={handleSaveProduct} className="space-y-6">
                 <div>
                   <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Tên Sản Phẩm</label>
@@ -853,11 +870,11 @@ function POSPage() {
 
       {/* DETAIL MODAL (SELL VIEW) */}
       {activeProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white/70 backdrop-blur-md">
+        <div role="dialog" aria-modal="true" aria-labelledby="modal-product-detail-title" className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white/70 backdrop-blur-md">
            <div className="bg-white border border-zinc-100 w-full max-w-xl rounded-[3rem] p-14 shadow-2xl relative">
-              <button onClick={() => setActiveProduct(null)} className="absolute top-10 right-10 text-zinc-300 hover:text-red-500">✕</button>
+              <button aria-label="Đóng chi tiết sản phẩm" onClick={() => setActiveProduct(null)} className="absolute top-10 right-10 w-11 h-11 flex items-center justify-center text-zinc-300 hover:text-red-500"><span aria-hidden="true">✕</span></button>
               <div className="text-center font-light italic">
-                  <h2 className="text-4xl mb-2">{activeProduct.name}</h2>
+                  <h2 id="modal-product-detail-title" className="text-4xl mb-2">{activeProduct.name}</h2>
                   <p className="text-zinc-400 text-[10px] uppercase tracking-widest mb-4">{activeProduct.material} | {activeProduct.origin}</p>
                   <p className="text-[#8FA08A] text-2xl font-black not-italic my-8">{formatVND(activeProduct.price)}</p>
                   {/* [NEW] Hiển thị tồn kho trong modal. Disable nút Add to Cart nếu hết hàng */}
@@ -901,22 +918,28 @@ function POSPage() {
 
         /* ── SCREEN 1: PAYMENT (IMAGE 1) ── */
         if (checkoutModal.status === 'payment') return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div role="dialog" aria-modal="true" aria-labelledby="modal-checkout-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-6xl rounded-[2rem] shadow-2xl border border-zinc-100 overflow-hidden flex flex-col lg:flex-row max-h-[90vh] overflow-y-auto">
               
               {/* LEFT COLUMN: CUSTOMER & METHODS */}
               <div className="flex-1 p-8 lg:p-12 space-y-10">
                 <div>
-                  <h3 className="text-xl font-bold text-[#333333] mb-6">Thông tin khách hàng</h3>
+                  <h3 id="modal-checkout-title" className="text-xl font-bold text-[#333333] mb-6">Thông tin khách hàng</h3>
                   <div className="grid grid-cols-1 gap-4">
+                    <label htmlFor="checkout-phone" className="sr-only">Số điện thoại khách hàng</label>
                     <input
+                      id="checkout-phone"
                       type="text" placeholder="Số điện thoại"
+                      aria-label="Số điện thoại khách hàng"
                       className="w-full bg-[#F9FAFB] rounded-xl px-5 py-4 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
                       value={customerInput.email} 
                       onChange={e => setCustomerInput(p => ({...p, email: e.target.value}))}
                     />
+                    <label htmlFor="checkout-name" className="sr-only">Tên khách hàng</label>
                     <input
+                      id="checkout-name"
                       type="text" placeholder="Tên khách hàng"
+                      aria-label="Tên khách hàng"
                       className="w-full bg-[#F9FAFB] rounded-xl px-5 py-4 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
                       value={customerInput.name}
                       onChange={e => setCustomerInput(p => ({...p, name: e.target.value}))}
@@ -1016,9 +1039,9 @@ function POSPage() {
 
         /* ── SCREEN 2: QR TRANSFER ── */
         if (checkoutModal.status === 'transfer-qr') return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="modal-qr-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div className="bg-white w-full max-w-sm rounded-2xl p-10 shadow-2xl border border-zinc-100 flex flex-col items-center text-center">
-              <h3 className="text-xl font-bold text-[#333333] mb-1">Mã QR Thanh Toán</h3>
+              <h3 id="modal-qr-title" className="text-xl font-bold text-[#333333] mb-1">Mã QR Thanh Toán</h3>
               <p className="text-zinc-400 text-xs mb-8">Vui lòng quét mã dưới đây</p>
               
               <div className="bg-white p-4 rounded-xl border border-zinc-100 shadow-sm mb-6">
@@ -1048,9 +1071,9 @@ function POSPage() {
           const dateStr = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
           
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div role="dialog" aria-modal="true" aria-labelledby="modal-receipt-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
               <div className="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden flex flex-col items-center p-6">
-                <h3 className="text-lg font-bold text-[#333333] mb-4">Invoice Preview</h3>
+                <h3 id="modal-receipt-title" className="text-lg font-bold text-[#333333] mb-4">Invoice Preview</h3>
                 <div className="bg-white w-full border border-zinc-100 shadow-inner p-8 text-zinc-800 font-mono text-[10px] leading-relaxed overflow-y-auto max-h-[60vh]" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
                   
                   {/* Shop Header */}
@@ -1125,6 +1148,27 @@ function POSPage() {
 
         return null;
       })()}
+
+      {/* CONFIRM DIALOG (thay thế window.confirm) */}
+      {confirmDialog?.isOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] p-10 max-w-sm w-full shadow-2xl border border-zinc-100 text-center">
+            <p id="confirm-dialog-title" className="text-base font-bold text-[#333333] mb-8">{confirmDialog.message}</p>
+            <div className="flex gap-4">
+              <button
+                aria-label="Hủy bỏ"
+                onClick={() => setConfirmDialog(null)}
+                className="flex-1 bg-zinc-100 text-zinc-600 py-4 rounded-2xl text-[10px] uppercase font-black tracking-widest hover:bg-zinc-200 transition-all"
+              >Hủy</button>
+              <button
+                aria-label="Xác nhận"
+                onClick={confirmDialog.onConfirm}
+                className="flex-1 bg-[#333333] text-white py-4 rounded-2xl text-[10px] uppercase font-black tracking-widest hover:bg-black transition-all"
+              >Xác nhận</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
