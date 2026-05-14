@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import {
+  ShoppingCart, History, Clock, LayoutDashboard,
+  Package, Users, LogOut, Search, Plus, Minus, X,
+  Printer, Loader2, PanelLeftOpen, PanelLeftClose
+} from 'lucide-react';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import PublicStore from './pages/PublicStore';
@@ -16,8 +21,7 @@ const COLORS = [
   { name: 'White', hex: '#ffffff', class: 'bg-white border border-zinc-200' },
   { name: 'Grey', hex: '#71717a', class: 'bg-zinc-400' }
 ];
-// [LEARN] Mảng SIZES dùng để render danh sách nút chọn size bằng .map()
-// Thay vì viết lặp 4 nút HTML thủ công, ta dùng vòng lặp để code ngắn gọn và dễ thêm size mới.
+
 const SIZES = ['S', 'M', 'L', 'XL'];
 
 const formatVND = (amount: any) => {
@@ -53,26 +57,23 @@ function POSPage() {
   const [user, setUser] = useState<any>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  // Shift & Staff state
+
   const [currentShift, setCurrentShift] = useState<any | null>(null);
   const [openingCash, setOpeningCash] = useState('');
   const [staffList, setStaffList] = useState<any[]>([]);
   const [newStaff, setNewStaff] = useState({ email: '', password: '', full_name: '' });
   const [allShifts, setAllShifts] = useState<any[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; message: string; onConfirm: () => void } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
-  // [LEARN] Anti-lag Search: Tách state thành 2 lớp
-  // searchQuery: cập nhật tức thì khi gõ (controlled input)
-  // debouncedQuery: chỉ cập nhật sau khi ngừng gõ 300ms (trigger lọc dữ liệu)
+
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  // [LEARN] State lưu thông tin khách hàng khi cashier tạo đơn nội bộ
-  // Thay thế cho chuỗi hard-code 'khachang@demo.com' trước đây
+
   const [customerInput, setCustomerInput] = useState({ name: '', email: '' });
   
-  // State for checkout modal
   const [checkoutModal, setCheckoutModal] = useState<{
     isOpen: boolean,
     status: 'payment' | 'transfer-qr' | 'receipt';
@@ -407,56 +408,100 @@ function POSPage() {
     });
   };
 
-  if (loading) return <div className="min-h-screen bg-[#FBFBF9] flex items-center justify-center font-outfit uppercase tracking-widest text-zinc-400 text-xs">Authenticating...</div>;
+  if (loading) return <div className="min-h-screen bg-[#FBFBF9] flex items-center justify-center font-inter uppercase tracking-widest text-zinc-400 text-xs"><Loader2 className="animate-spin mr-2" size={16} />Authenticating...</div>;
 
   return (
-    <div className="min-h-screen bg-[#FBFBF9] text-[#333333] font-outfit flex overflow-hidden w-full">
-      {/* Sidebar (Duy trì tính nhất quán) */}
-      <aside className="w-16 md:w-20 lg:w-64 bg-white border-r border-zinc-100 flex flex-col py-4 px-2 lg:px-4 shrink-0 shadow-sm z-50">
-        <div className="flex items-center mb-10 px-2 pt-4">
-          <img src="/logo.png" alt="MEKIE" className="w-10 h-10 rounded-xl mr-3 shrink-0 shadow-lg" />
-          <h1 className="text-lg font-black hidden lg:block tracking-tighter text-center">
-            <span className="text-[#4285F4]">M</span>
-            <span className="text-[#EA4335]">E</span>
-            <span className="text-[#FBBC05]">K</span>
-            <span className="text-[#4285F4]">I</span>
-            <span className="text-[#34A853]">E</span>
-            <span className="text-zinc-500 ml-1 font-medium tracking-normal">POS</span>
-          </h1>
+    <div className="min-h-screen bg-[#FBFBF9] text-[#333333] font-inter flex overflow-hidden w-full">
+      {/* Sidebar */}
+      <aside
+        className={`${
+          sidebarOpen ? 'w-64' : 'w-16'
+        } bg-white border-r border-zinc-100 flex flex-col py-4 shrink-0 shadow-sm z-50 transition-all duration-300 ease-in-out overflow-hidden`}
+      >
+        {/* Logo + Toggle */}
+        <div className="flex items-center justify-between px-3 pt-2 pb-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src="/logo.png" alt="MEKIE" className="w-9 h-9 rounded-xl shrink-0 shadow-md" />
+            {sidebarOpen && (
+              <h1 className="text-base font-black tracking-tighter whitespace-nowrap">
+                <span className="text-[#4285F4]">M</span>
+                <span className="text-[#EA4335]">E</span>
+                <span className="text-[#FBBC05]">K</span>
+                <span className="text-[#4285F4]">I</span>
+                <span className="text-[#34A853]">E</span>
+                <span className="text-zinc-400 ml-1 font-medium">POS</span>
+              </h1>
+            )}
+          </div>
+          <button
+            onClick={() => setSidebarOpen(o => !o)}
+            aria-label={sidebarOpen ? 'Thu gọn sidebar' : 'Mở rộng sidebar'}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+          >
+            {sidebarOpen
+              ? <PanelLeftClose size={16} aria-hidden="true" />
+              : <PanelLeftOpen size={16} aria-hidden="true" />}
+          </button>
         </div>
-        <nav className="flex-1 space-y-2" aria-label="Menu chính">
-          <button onClick={() => setActiveView('sell')} aria-label="Bán hàng" aria-current={activeView === 'sell' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'sell' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <span aria-hidden="true" className="text-lg">🛒</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Bán Hàng</span>
-          </button>
-          <button onClick={() => setActiveView('history')} aria-label="Lịch sử giao dịch" aria-current={activeView === 'history' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'history' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <span aria-hidden="true" className="text-lg">📜</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Lịch Sử</span>
-          </button>
-          <button onClick={() => setActiveView('shift')} aria-label="Quản lý ca làm" aria-current={activeView === 'shift' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'shift' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-            <span aria-hidden="true" className="text-lg">⏱️</span>
-            <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Ca Làm</span>
-            {currentShift && <span aria-hidden="true" className="hidden lg:inline ml-auto w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>}
-          </button>
-          {user?.role === 'admin' && (
-            <>
-              <button onClick={() => setActiveView('dashboard')} aria-label="Tổng quan doanh thu" aria-current={activeView === 'dashboard' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'dashboard' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <span aria-hidden="true" className="text-lg">📊</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Tổng Quan</span>
-              </button>
-              <button onClick={() => setActiveView('warehouse')} aria-label="Quản lý kho hàng" aria-current={activeView === 'warehouse' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'warehouse' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <span aria-hidden="true" className="text-lg">📦</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Kho Hàng</span>
-              </button>
-              <button onClick={() => setActiveView('staff')} aria-label="Quản lý nhân viên" aria-current={activeView === 'staff' ? 'page' : undefined} className={`w-full flex items-center p-4 rounded-xl transition-all font-bold ${activeView === 'staff' ? 'bg-[#F9FAFB] text-[#8FA08A] shadow-sm border border-zinc-50' : 'text-zinc-400 hover:bg-zinc-50'}`}>
-                <span aria-hidden="true" className="text-lg">👥</span> <span className="hidden lg:inline ml-4 uppercase text-[10px] tracking-widest">Nhân Viên</span>
-              </button>
-            </>
-          )}
+
+        {/* Nav */}
+        <nav className="flex-1 space-y-1 px-2" aria-label="Menu chính">
+          {([
+            { view: 'sell',      icon: <ShoppingCart size={18} />, label: 'Bán Hàng',   ariaLabel: 'Bán hàng',           adminOnly: false },
+            { view: 'history',   icon: <History size={18} />,     label: 'Lịch Sử',    ariaLabel: 'Lịch sử giao dịch',  adminOnly: false },
+            { view: 'shift',     icon: <Clock size={18} />,       label: 'Ca Làm',      ariaLabel: 'Quản lý ca làm',     adminOnly: false },
+            { view: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Tổng Quan', ariaLabel: 'Tổng quan doanh thu', adminOnly: true },
+            { view: 'warehouse', icon: <Package size={18} />,    label: 'Kho Hàng',    ariaLabel: 'Quản lý kho hàng',   adminOnly: true },
+            { view: 'staff',     icon: <Users size={18} />,       label: 'Nhân Viên',   ariaLabel: 'Quản lý nhân viên',  adminOnly: true },
+          ] as const).filter(item => !item.adminOnly || user?.role === 'admin').map(item => (
+            <button
+              key={item.view}
+              onClick={() => setActiveView(item.view as any)}
+              aria-label={item.ariaLabel}
+              aria-current={activeView === item.view ? 'page' : undefined}
+              title={!sidebarOpen ? item.label : undefined}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all font-semibold ${
+                activeView === item.view
+                  ? 'bg-[#F0F4F0] text-[#8FA08A]'
+                  : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'
+              }`}
+            >
+              <span aria-hidden="true" className="shrink-0">{item.icon}</span>
+              {sidebarOpen && (
+                <span className="uppercase text-[10px] tracking-widest whitespace-nowrap">{item.label}</span>
+              )}
+              {item.view === 'shift' && currentShift && sidebarOpen && (
+                <span aria-hidden="true" className="ml-auto w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0"></span>
+              )}
+              {item.view === 'shift' && currentShift && !sidebarOpen && (
+                <span aria-hidden="true" className="absolute ml-7 -mt-5 w-2 h-2 bg-emerald-400 rounded-full"></span>
+              )}
+            </button>
+          ))}
         </nav>
-        <div className="pt-6 border-t border-zinc-50 p-2">
-           <div className="hidden lg:block uppercase text-[10px] text-zinc-300 font-bold tracking-widest mb-1">{user?.email}</div>
-           <div className="hidden lg:flex items-center gap-2 mb-1">
-             <span className="text-[#8FA08A] text-xs font-black truncate">{user?.full_name || user?.tenant_id}</span>
-             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${user?.role === 'admin' ? 'bg-amber-50 text-amber-600' : 'bg-zinc-100 text-zinc-500'}`}>{user?.role}</span>
-           </div>
-           <button onClick={handleLogout} className="w-full mt-4 flex items-center p-4 rounded-xl hover:bg-red-50 text-zinc-400 hover:text-red-400 transition-all text-[10px] uppercase font-bold tracking-widest">🚪 <span className="hidden lg:inline ml-3">Đăng xuất</span></button>
+
+        {/* User info + Logout */}
+        <div className="border-t border-zinc-100 px-2 pt-4 pb-2">
+          {sidebarOpen && (
+            <div className="px-2 mb-3">
+              <div className="text-[10px] text-zinc-300 font-bold tracking-widest truncate">{user?.email}</div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[#8FA08A] text-xs font-black truncate">{user?.full_name || user?.tenant_id}</span>
+                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
+                  user?.role === 'admin' ? 'bg-amber-50 text-amber-600' : 'bg-zinc-100 text-zinc-500'
+                }`}>{user?.role}</span>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            aria-label="Đăng xuất"
+            title={!sidebarOpen ? 'Đăng xuất' : undefined}
+            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 text-zinc-400 hover:text-red-400 transition-all"
+          >
+            <LogOut size={16} aria-hidden="true" className="shrink-0" />
+            {sidebarOpen && <span className="text-[10px] uppercase font-bold tracking-widest">Đăng xuất</span>}
+          </button>
         </div>
       </aside>
 
@@ -633,15 +678,18 @@ function POSPage() {
                 <header className="mb-10 lg:mb-14 border-b border-zinc-100 pb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                    <h2 className="text-5xl font-light italic text-[#333333]">Storefront</h2>
                    <label htmlFor="search-sell" className="sr-only">Tìm sản phẩm theo tên</label>
-                   <input 
-                      id="search-sell"
-                      type="text" 
-                      placeholder="Tìm món hàng..." 
-                      aria-label="Tìm sản phẩm theo tên"
-                      className="bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full lg:w-72 font-medium"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                   />
+                   <div className="relative w-full lg:w-72">
+                     <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
+                     <input 
+                        id="search-sell"
+                        type="text" 
+                        placeholder="Tìm món hàng..." 
+                        aria-label="Tìm sản phẩm theo tên"
+                        className="pl-10 bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full font-medium"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                     />
+                   </div>
                 </header>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
                 {filteredProducts.map((product) => {
@@ -691,17 +739,17 @@ function POSPage() {
                           <button
                             aria-label={`Giảm số lượng ${item.name}`}
                             onClick={() => setCart(c => c.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
-                            className="w-11 h-11 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors text-xs font-black flex items-center justify-center"
-                          ><span aria-hidden="true">−</span></button>
+                            className="w-11 h-11 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors flex items-center justify-center"
+                          ><Minus size={14} aria-hidden="true" /></button>
                           <span aria-live="polite" aria-label={`Số lượng ${item.name}: ${item.quantity}`} className="w-6 text-center text-xs font-black">{item.quantity}</span>
                           <button
                             aria-label={`Tăng số lượng ${item.name}`}
                             onClick={() => setCart(c => c.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}
-                            className="w-11 h-11 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors text-xs font-black flex items-center justify-center"
-                          ><span aria-hidden="true">+</span></button>
+                            className="w-11 h-11 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors flex items-center justify-center"
+                          ><Plus size={14} aria-hidden="true" /></button>
                         </div>
                         <span className="font-bold text-xs shrink-0 w-16 text-right">{formatVND(parseFloat(item.price) * item.quantity)}</span>
-                        <button aria-label={`Xóa ${item.name} khỏi giỏ hàng`} onClick={() => setCart(c => c.filter((_, i) => i !== idx))} className="w-11 h-11 flex items-center justify-center text-zinc-300 hover:text-red-400 transition-colors text-sm leading-none shrink-0"><span aria-hidden="true">✕</span></button>
+                        <button aria-label={`Xóa ${item.name} khỏi giỏ hàng`} onClick={() => setCart(c => c.filter((_, i) => i !== idx))} className="w-11 h-11 flex items-center justify-center text-zinc-300 hover:text-red-400 transition-colors shrink-0"><X size={14} aria-hidden="true" /></button>
                       </div>
                     ))}
                     {cart.length === 0 && <p className="text-center text-zinc-300 text-xs italic py-8">Chưa có sản phẩm</p>}
@@ -777,16 +825,18 @@ function POSPage() {
            <div className="animate-in slide-in-from-bottom-10 duration-500">
              <header className="mb-14 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
                 <h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Warehouse</h2>
-                <label htmlFor="search-warehouse" className="sr-only">Tìm sản phẩm trong kho</label>
-                <input 
-                   id="search-warehouse"
-                   type="text" 
-                   placeholder="Tìm sản phẩm trong kho..." 
-                   aria-label="Tìm sản phẩm trong kho"
-                   className="bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full lg:w-80 font-medium"
-                   value={searchQuery}
-                   onChange={(e) => setSearchQuery(e.target.value)}
-                />
+               <div className="relative w-full lg:w-80">
+                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
+                 <input 
+                    id="search-warehouse"
+                    type="text" 
+                    placeholder="Tìm sản phẩm trong kho..." 
+                    aria-label="Tìm sản phẩm trong kho"
+                    className="pl-10 bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full font-medium"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                 />
+               </div>
              </header>
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {filteredProducts.map(p => (
@@ -810,7 +860,7 @@ function POSPage() {
                   </div>
                 ))}
                 <button onClick={openAddModal} className="bg-[#F9FAFB] border-2 border-dashed border-zinc-100 rounded-[3rem] flex flex-col items-center justify-center p-12 text-zinc-300 hover:text-[#8FA08A] hover:border-[#8FA08A]/30 transition-all group">
-                   <span className="text-4xl mb-4 group-hover:scale-125 transition-transform">+</span>
+                   <Plus size={36} className="mb-4 group-hover:scale-125 transition-transform" aria-hidden="true" />
                    <span className="text-[10px] uppercase font-black tracking-widest">Thêm sản phẩm mới</span>
                 </button>
              </div>
@@ -872,7 +922,7 @@ function POSPage() {
       {activeProduct && (
         <div role="dialog" aria-modal="true" aria-labelledby="modal-product-detail-title" className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white/70 backdrop-blur-md">
            <div className="bg-white border border-zinc-100 w-full max-w-xl rounded-[3rem] p-14 shadow-2xl relative">
-              <button aria-label="Đóng chi tiết sản phẩm" onClick={() => setActiveProduct(null)} className="absolute top-10 right-10 w-11 h-11 flex items-center justify-center text-zinc-300 hover:text-red-500"><span aria-hidden="true">✕</span></button>
+              <button aria-label="Đóng chi tiết sản phẩm" onClick={() => setActiveProduct(null)} className="absolute top-10 right-10 w-11 h-11 flex items-center justify-center text-zinc-300 hover:text-red-500"><X size={18} aria-hidden="true" /></button>
               <div className="text-center font-light italic">
                   <h2 id="modal-product-detail-title" className="text-4xl mb-2">{activeProduct.name}</h2>
                   <p className="text-zinc-400 text-[10px] uppercase tracking-widest mb-4">{activeProduct.material} | {activeProduct.origin}</p>
