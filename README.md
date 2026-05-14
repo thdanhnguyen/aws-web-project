@@ -15,70 +15,68 @@ A multi-tenant, web-based Point-of-Sale (POS) SaaS application built for modern 
 
 The system is designed for AWS deployment utilizing a clean, scalable architecture:
 
-```text
-// To-Be: Clean AWS SaaS Architecture (High Availability + Multi-Tenant)
-User [icon: user]
-Super Admin [icon: user]
+```mermaid
+flowchart TD
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:white
+    classDef vpc fill:#E6F4EA,stroke:#34A853,stroke-width:2px,color:black
+    classDef public fill:#E8F0FE,stroke:#4285F4,stroke-width:2px,color:black
+    classDef private fill:#FCE8E6,stroke:#EA4335,stroke-width:2px,color:black
+    classDef external fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px,color:black
 
-AWS_Cloud [icon: aws] {
+    User((User))
+    Admin((Super Admin))
+    SePay[SePay Webhook API]:::external
 
-  DNS_CDN [color: orange] {
-    Route_53 [icon: aws-route-53]
-    CloudFront [icon: aws-cloudfront]
-  }
+    subgraph AWS [AWS Cloud]
+        direction TB
+        
+        subgraph DNS [DNS & CDN]
+            direction LR
+            Route53[Amazon Route 53]:::aws
+            CloudFront[Amazon CloudFront]:::aws
+        end
+        
+        S3[S3 Bucket - React Frontend]:::aws
 
-  S3_Frontend [label: "S3 (React Static)", icon: aws-s3]
+        subgraph VPC [AWS VPC]
+            direction TB
+            
+            subgraph Public [Public Subnets]
+                ALB[Application Load Balancer]:::public
+            end
+            
+            subgraph Private [Private Subnets]
+                direction TB
+                EC2[EC2 Backend - AZ A]:::private
+                RDS[(RDS Primary - AZ A)]:::private
+            end
+        end
 
-  VPC [color: green, icon: aws-vpc] {
+        subgraph Support [Supporting Services]
+            direction LR
+            SES[Amazon SES]:::aws
+            Secrets[Secrets Manager]:::aws
+            CloudWatch[Amazon CloudWatch]:::aws
+        end
+    end
 
-    Public_Subnets [color: lightblue] {
-      ALB [label: "Application Load Balancer (Public)", icon: aws-elastic-load-balancing]
-    }
+    %% Flows
+    User --> Route53
+    Admin --> Route53
+    
+    Route53 --> CloudFront
+    CloudFront --> S3
 
-    Private_Subnets [color: lightgreen] {
-      App_Tier [color: yellow] {
-        EC2_A [label: "EC2 Backend (AZ A)", icon: aws-ec2]
-      }
-
-      Database_Tier [color: red] {
-        RDS_Primary [label: "RDS Primary (AZ A)", icon: aws-rds]
-      }
-    }
-  }
-
-  Supporting [color: blue] {
-    SES [icon: aws-simple-email-service]
-    Secrets [icon: aws-secrets-manager]
-    CloudWatch [icon: aws-cloudwatch]
-  }
-
-  External_Integrations [color: purple] {
-    SePay_Webhook [label: "SePay API (External)", icon: webhook]
-  }
-}
-
-// ── Main Flow ──
-User > Route_53
-Super Admin > Route_53
-
-// Frontend
-Route_53 > CloudFront 
-CloudFront > S3_Frontend
-
-// Backend API
-Route_53 > ALB 
-ALB > EC2_A
-
-// Database
-EC2_A > RDS_Primary
-
-// Supporting Services
-App_Tier > SES 
-App_Tier > Secrets 
-App_Tier > CloudWatch 
-
-// External Payment Service
-App_Tier > SePay_Webhook 
+    Route53 --> ALB
+    ALB --> EC2
+    
+    EC2 --> RDS
+    
+    EC2 -.-> SES
+    EC2 -.-> Secrets
+    EC2 -.-> CloudWatch
+    
+    EC2 --> SePay
 ```
 
 ---
