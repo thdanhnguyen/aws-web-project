@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import {
   ShoppingCart, History, Clock, LayoutDashboard,
   Package, Users, LogOut, Search, Plus, Minus, X,
-  Printer, Loader2, PanelLeftOpen, PanelLeftClose
+  Loader2, PanelLeftOpen, PanelLeftClose
 } from 'lucide-react';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -70,6 +70,7 @@ function POSPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'Paid' | 'Unpaid'>('all');
 
 
   const [customerInput, setCustomerInput] = useState({ name: '', email: '' });
@@ -89,6 +90,29 @@ function POSPage() {
     const handler = setTimeout(() => setDebouncedQuery(searchQuery), 300);
     return () => clearTimeout(handler);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        const navItems = [
+          { view: 'sell', adminOnly: false },
+          { view: 'history', adminOnly: false },
+          { view: 'shift', adminOnly: false },
+          { view: 'dashboard', adminOnly: true },
+          { view: 'warehouse', adminOnly: true },
+          { view: 'staff', adminOnly: true },
+        ].filter(item => !item.adminOnly || user?.role === 'admin');
+
+        const key = parseInt(e.key);
+        if (!isNaN(key) && key >= 1 && key <= navItems.length) {
+          e.preventDefault();
+          setActiveView(navItems[key - 1].view as any);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [user]);
 
   const filteredProducts = useMemo(() => {
     if (!debouncedQuery) return products;
@@ -181,9 +205,10 @@ function POSPage() {
     refreshAccessToken().then(async (token) => {
       if (token) {
         fetchProducts(token);
-        // Kiểm tra ca hiện tại — nếu chưa có ca, chuyển vào view Ca Làm
+        // Kiểm tra ca hiện tại — nếu chưa có ca VÀ không phải admin, chuyển vào view Ca Làm
         const shift = await fetchCurrentShift();
-        if (!shift) setActiveView('shift');
+        const u = JSON.parse(localStorage.getItem('pos_user') || '{}');
+        if (!shift && u.role !== 'admin') setActiveView('shift');
         else setActiveView('sell');
       }
       setLoading(false);
@@ -436,7 +461,8 @@ function POSPage() {
           <button
             onClick={() => setSidebarOpen(o => !o)}
             aria-label={sidebarOpen ? 'Thu gọn sidebar' : 'Mở rộng sidebar'}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+            aria-expanded={sidebarOpen}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors focus-visible:ring-2 focus-visible:ring-[#8FA08A] outline-none"
           >
             {sidebarOpen
               ? <PanelLeftClose size={16} aria-hidden="true" />
@@ -445,28 +471,32 @@ function POSPage() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-1 px-2" aria-label="Menu chính">
+        <nav className="flex-1 space-y-2 px-2" aria-label="Main navigation">
           {([
-            { view: 'sell',      icon: <ShoppingCart size={18} />, label: 'Bán Hàng',   ariaLabel: 'Bán hàng',           adminOnly: false },
-            { view: 'history',   icon: <History size={18} />,     label: 'Lịch Sử',    ariaLabel: 'Lịch sử giao dịch',  adminOnly: false },
-            { view: 'shift',     icon: <Clock size={18} />,       label: 'Ca Làm',      ariaLabel: 'Quản lý ca làm',     adminOnly: false },
+            { view: 'sell',      icon: <ShoppingCart size={18} />, label: 'Bán Hàng',   ariaLabel: 'Bán hàng',            adminOnly: false },
+            { view: 'history',   icon: <History size={18} />,     label: 'Lịch Sử',    ariaLabel: 'Lịch sử giao dịch',   adminOnly: false },
+            { view: 'shift',     icon: <Clock size={18} />,       label: 'Ca Làm',      ariaLabel: 'Quản lý ca làm',      adminOnly: false },
+            { view: 'warehouse', icon: <Package size={18} />,    label: 'Sản Phẩm',    ariaLabel: 'Xem danh sách sản phẩm', adminOnly: false },
             { view: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Tổng Quan', ariaLabel: 'Tổng quan doanh thu', adminOnly: true },
-            { view: 'warehouse', icon: <Package size={18} />,    label: 'Kho Hàng',    ariaLabel: 'Quản lý kho hàng',   adminOnly: true },
-            { view: 'staff',     icon: <Users size={18} />,       label: 'Nhân Viên',   ariaLabel: 'Quản lý nhân viên',  adminOnly: true },
-          ] as const).filter(item => !item.adminOnly || user?.role === 'admin').map(item => (
+            { view: 'staff',     icon: <Users size={18} />,       label: 'Nhân Viên',   ariaLabel: 'Quản lý nhân viên',   adminOnly: true },
+          ] as const).filter(item => !item.adminOnly || user?.role === 'admin').map((item, index) => (
             <button
               key={item.view}
               onClick={() => setActiveView(item.view as any)}
-              aria-label={item.ariaLabel}
+              aria-label={`${item.ariaLabel} (Phím tắt: Ctrl+${index + 1})`}
               aria-current={activeView === item.view ? 'page' : undefined}
-              title={!sidebarOpen ? item.label : undefined}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all font-semibold ${
+              title={!sidebarOpen ? `${item.label} (Ctrl+${index + 1})` : undefined}
+              className={`w-full flex items-center gap-3 p-3 min-h-[48px] rounded-xl transition-all font-semibold relative overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-[#8FA08A] ${
                 activeView === item.view
-                  ? 'bg-[#F0F4F0] text-[#8FA08A]'
-                  : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'
+                  ? 'bg-[#F0F4F0] text-[#4A5D45]'
+                  : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800'
               }`}
             >
-              <span aria-hidden="true" className="shrink-0">{item.icon}</span>
+              {/* Active Indicator: a subtle left border/bar inside the button */}
+              {activeView === item.view && (
+                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-[#4A5D45] rounded-r-full" aria-hidden="true" />
+              )}
+              <span aria-hidden="true" className={`shrink-0 ${activeView === item.view ? 'ml-1' : 'ml-0'} transition-all`}>{item.icon}</span>
               {sidebarOpen && (
                 <span className="uppercase text-[10px] tracking-widest whitespace-nowrap">{item.label}</span>
               )}
@@ -474,7 +504,10 @@ function POSPage() {
                 <span aria-hidden="true" className="ml-auto w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0"></span>
               )}
               {item.view === 'shift' && currentShift && !sidebarOpen && (
-                <span aria-hidden="true" className="absolute ml-7 -mt-5 w-2 h-2 bg-emerald-400 rounded-full"></span>
+                <span aria-hidden="true" className="absolute right-2 top-2 w-2 h-2 bg-emerald-400 rounded-full"></span>
+              )}
+              {sidebarOpen && (
+                <span className="ml-auto text-[9px] text-zinc-400 font-medium tracking-tighter" aria-hidden="true">Ctrl+{index + 1}</span>
               )}
             </button>
           ))}
@@ -672,7 +705,20 @@ function POSPage() {
         )}
 
         {/* VIEW: SELL (POS) */}
-        {activeView === 'sell' && (
+        {activeView === 'sell' && !currentShift && (
+          <div className="animate-in fade-in duration-500 flex flex-col items-center justify-center h-full max-w-md mx-auto text-center mt-20">
+             <div className="w-24 h-24 bg-red-50 text-red-400 rounded-full flex items-center justify-center mb-6 shadow-sm mx-auto">
+               <Clock size={48} aria-hidden="true" />
+             </div>
+             <h2 className="text-3xl font-light italic mb-4">Chưa Mở Ca</h2>
+             <p className="text-sm text-zinc-500 mb-8 leading-relaxed">Bạn cần phải xác nhận mở ca làm việc trước khi có thể thực hiện chức năng bán hàng.</p>
+             <button onClick={() => setActiveView('shift')} className="bg-[#8FA08A] text-white px-8 py-4 rounded-2xl uppercase text-[10px] font-black tracking-widest shadow-lg shadow-[#8FA08A]/20 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">
+               Đi tới Mở Ca
+             </button>
+          </div>
+        )}
+
+        {activeView === 'sell' && currentShift && (
           <div className="animate-in fade-in duration-500 flex flex-col xl:flex-row h-full gap-6 lg:gap-10">
             <div className="flex-1">
                 <header className="mb-10 lg:mb-14 border-b border-zinc-100 pb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
@@ -782,55 +828,70 @@ function POSPage() {
           </div>
         )}
 
-        {/* VIEW: HISTORY */}
-        {activeView === 'history' && (
+        {/* VIEW: HISTORY — read-only cho cả admin và staff */}
+        {activeView === 'history' && (() => {
+          const filteredHistory = history.filter(h => historyFilter === 'all' || h.payment_status === historyFilter);
+          return (
           <div className="animate-in slide-in-from-right-10 duration-500">
-            <header className="mb-14"><h2 className="text-5xl font-light text-[#333333] tracking-tight italic">History</h2></header>
-            <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-soft overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-[0.2em] font-black text-zinc-400">
-                    <tr>
-                      <th className="p-8">Mã Đơn</th>
-                      <th className="p-8">Khách Hàng</th>
-                      <th className="p-8">Thời Gian</th>
-                      <th className="p-8">Trạng Thái</th>
-                      <th className="p-8 text-right">Tổng Tiền</th>
+            <header className="mb-10 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
+              <h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Lịch Sử</h2>
+              <div className="flex items-center gap-2">
+                {(['all','Paid','Unpaid'] as const).map(f => (
+                  <button key={f} onClick={() => setHistoryFilter(f)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      historyFilter === f ? 'bg-[#333333] text-white' : 'bg-white border border-zinc-100 text-zinc-400 hover:border-zinc-300'
+                    }`}>
+                    {f === 'all' ? 'Tất cả' : f === 'Paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                  </button>
+                ))}
+              </div>
+            </header>
+            <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-soft overflow-x-auto">
+              <table className="w-full text-left" role="table">
+                <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-[0.2em] font-black text-zinc-400">
+                  <tr>
+                    <th scope="col" className="p-6 lg:p-8">Mã Đơn</th>
+                    <th scope="col" className="p-6 lg:p-8">Khách Hàng</th>
+                    <th scope="col" className="p-6 lg:p-8">Thời Gian</th>
+                    <th scope="col" className="p-6 lg:p-8">Trạng Thái</th>
+                    <th scope="col" className="p-6 lg:p-8 text-right">Tổng Tiền</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50 text-sm">
+                  {filteredHistory.map((h, i) => (
+                    <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
+                      <td className="p-6 lg:p-8 font-bold text-[#8FA08A]"># {h.id}</td>
+                      <td className="p-6 lg:p-8">{h.customer_name || 'Khách vãng lai'}</td>
+                      <td className="p-6 lg:p-8 text-zinc-400">{formatVietnamTime(h.created_at || h.create_at)}</td>
+                      <td className="p-6 lg:p-8">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          h.payment_status === 'Paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-zinc-100 text-zinc-400'
+                        }`}>{h.payment_status || 'Unpaid'}</span>
+                      </td>
+                      <td className="p-6 lg:p-8 text-right font-black">{formatVND(h.total_amount)}</td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-50 text-sm">
-                    {history.map((h, i) => (
-                      <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
-                        <td className="p-8 font-bold text-[#8FA08A]"># {h.id}</td>
-                        <td className="p-8">{h.customer_name || 'Khách vãng lai'}</td>
-                        <td className="p-8 text-zinc-400">{formatVietnamTime(h.created_at || h.create_at)}</td>
-                        {/* [NEW] Badge trạng thái thanh toán — hiển thị màu xanh nếu Paid, màu xám nếu Unpaid */}
-                        <td className="p-8">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                            h.payment_status === 'Paid'
-                              ? 'bg-emerald-50 text-emerald-600'
-                              : 'bg-zinc-100 text-zinc-400'
-                          }`}>{h.payment_status || 'Unpaid'}</span>
-                        </td>
-                        <td className="p-8 text-right font-black">{formatVND(h.total_amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  ))}
+                  {filteredHistory.length === 0 && (
+                    <tr><td colSpan={5} className="p-12 text-center text-zinc-400 italic text-xs" aria-live="polite">Không có giao dịch nào</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        )}
+          );
+        })()}
 
-        {/* VIEW: WAREHOUSE */}
-        {activeView === 'warehouse' && (
+        {/* VIEW: WAREHOUSE — Admin: đầy đủ tính năng | Staff: read-only tra cứu */}
+        {activeView === 'warehouse' && user?.role === 'admin' && (
            <div className="animate-in slide-in-from-bottom-10 duration-500">
              <header className="mb-14 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
-                <h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Warehouse</h2>
+                <h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Kho Hàng</h2>
                <div className="relative w-full lg:w-80">
                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
-                 <input 
+                 <input
                     id="search-warehouse"
-                    type="text" 
-                    placeholder="Tìm sản phẩm trong kho..." 
+                    type="text"
+                    placeholder="Tìm sản phẩm trong kho..."
                     aria-label="Tìm sản phẩm trong kho"
                     className="pl-10 bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full font-medium"
                     value={searchQuery}
@@ -845,7 +906,6 @@ function POSPage() {
                         <div>
                           <h4 className="font-bold text-lg">{p.name}</h4>
                           <p className="text-[10px] text-zinc-400 uppercase tracking-widest">{p.category} | {p.material} | {p.origin}</p>
-                          {/* [NEW] Badge tồn kho: xanh nếu còn hàng, đỏ nếu hết hàng */}
                           <span className={`mt-2 inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                             (p.stock ?? 0) > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-400'
                           }`}>
@@ -865,6 +925,80 @@ function POSPage() {
                 </button>
              </div>
            </div>
+        )}
+
+        {/* VIEW: WAREHOUSE — Staff: Read-Only tra cứu sản phẩm & tồn kho */}
+        {activeView === 'warehouse' && user?.role !== 'admin' && (
+          <div className="animate-in slide-in-from-bottom-10 duration-500">
+            <header className="mb-10 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
+              <div>
+                <h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Sản Phẩm</h2>
+                <p className="text-xs text-zinc-400 mt-2 uppercase tracking-widest">Chế độ xem — chỉ đọc</p>
+              </div>
+              <div className="relative w-full lg:w-80">
+                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
+                <input
+                  id="search-products-readonly"
+                  type="text"
+                  placeholder="Tìm theo tên sản phẩm..."
+                  aria-label="Tìm sản phẩm trong kho"
+                  className="pl-10 bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full font-medium"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </header>
+            <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-soft overflow-x-auto">
+              <table className="w-full text-left" role="table">
+                <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-[0.2em] font-black text-zinc-400">
+                  <tr>
+                    <th scope="col" className="p-6">Tên Sản Phẩm</th>
+                    <th scope="col" className="p-6">Danh Mục</th>
+                    <th scope="col" className="p-6 text-right">Giá Bán</th>
+                    <th scope="col" className="p-6 text-center">Tồn Kho</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50 text-sm" aria-live="polite">
+                  {filteredProducts.map((p) => (
+                    <tr key={p.id} className="hover:bg-zinc-50/50 transition-colors">
+                      <td className="p-6">
+                        <p className="font-bold">{p.name}</p>
+                        <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-0.5">{p.material} · {p.origin}</p>
+                      </td>
+                      <td className="p-6 text-zinc-500">{p.category || '—'}</td>
+                      <td className="p-6 text-right font-black text-[#8FA08A]">{formatVND(p.price)}</td>
+                      <td className="p-6 text-center">
+                        {(p.stock ?? 0) > 0 ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700"
+                            aria-label={`Còn ${p.stock} sản phẩm`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+                            {p.stock}
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-red-50 text-red-500"
+                            aria-label="Hết hàng"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" aria-hidden="true" />
+                            Hết hàng
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredProducts.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-12 text-center text-zinc-400 italic text-xs" aria-live="polite">
+                        Không có sản phẩm nào
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </main>
 

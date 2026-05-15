@@ -17,6 +17,8 @@ export const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+  connectionTimeoutMillis: 20000, // Chờ tối đa 20 giây để kết nối
+  idleTimeoutMillis: 30000,       // Đóng kết nối nhàn rỗi sau 30 giây
 });
 
 export const connectDB = async () => {
