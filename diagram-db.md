@@ -65,7 +65,7 @@ erDiagram
         int id PK
         string tenant_id FK
         string name
-        string sku_prefix
+        string sku
         timestamp created_at
     }
 

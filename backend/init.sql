@@ -46,7 +46,7 @@ CREATE TABLE products (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(50) REFERENCES tenants(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
-  sku_prefix VARCHAR(10),
+  sku VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -114,7 +114,7 @@ INSERT INTO tenants (id, name, domain, access_code) VALUES
 ('LUXURY-SHOP-01', 'Shop Thời Trang Outfit', 'luxury-shop', '123456');
 
 -- Dùng DEFAULT để id tự tăng, tránh conflict sequence khi chạy lại script
-INSERT INTO products (tenant_id, name, sku_prefix) VALUES 
+INSERT INTO products (tenant_id, name, sku) VALUES 
 ('LUXURY-SHOP-01', 'Áo Hoodie Monochrome', 'HD-MC'),
 ('LUXURY-SHOP-01', 'Quần Jean Slimfit', 'JN-SF'),
 ('LUXURY-SHOP-01', 'Áo Polo Signature', 'PL-SG');

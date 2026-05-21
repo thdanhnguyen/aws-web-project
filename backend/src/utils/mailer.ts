@@ -43,7 +43,7 @@ export const sendReceiptEmail = async (toEmail: string, receiptData: any) => {
         <tr>
           <td style="background:#333333;padding:36px 40px;text-align:center;">
             <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-1px;font-style:italic;">MEKIE POS</div>
-            <div style="font-size:11px;color:#8FA08A;letter-spacing:4px;text-transform:uppercase;margin-top:6px;">${receiptData.tenantName}</div>
+            <div style="font-size:20px;font-weight:bold;color:#8FA08A;letter-spacing:2px;text-transform:uppercase;margin-top:6px;">${receiptData.tenantName}</div>
           </td>
         </tr>
 

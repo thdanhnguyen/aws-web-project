@@ -1008,9 +1008,15 @@ function POSPage() {
            <div className="bg-white border border-zinc-100 w-full max-w-lg rounded-[2.5rem] p-12 shadow-2xl animate-in zoom-in-95 duration-500">
              <h3 id="modal-product-title" className="text-2xl font-light italic mb-10">{isAddingNew ? 'Nhập hàng mới' : 'Cập nhật kho'}</h3>
              <form onSubmit={handleSaveProduct} className="space-y-6">
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Tên Sản Phẩm</label>
-                  <input required type="text" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.name} onChange={e => setEditProduct({...editProduct, name: e.target.value})} />
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Tên Sản Phẩm</label>
+                    <input required type="text" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.name} onChange={e => setEditProduct({...editProduct, name: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Mã SKU</label>
+                    <input type="text" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-3 text-sm focus:border-[#8FA08A] outline-none" value={editProduct.sku || ''} onChange={e => setEditProduct({...editProduct, sku: e.target.value})} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <div>

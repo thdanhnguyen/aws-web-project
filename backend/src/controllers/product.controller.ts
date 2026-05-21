@@ -9,7 +9,7 @@ export const getProducts = async (req: AuthRequest, res: Response) => {
         const result = await pool.query(
             // [LEARN] Sử dụng LEFT JOIN để lấy cả những sản phẩm chưa có product_details (edge case)
             // Thêm cột stock và category vào kết quả để Frontend có thể hiển thị badge tồn kho và danh mục
-            `SELECT p.id, p.name, pd.price, pd.description, pd.material, pd.origin, pd.stock, pd.category
+            `SELECT p.id, p.name, p.sku, pd.price, pd.description, pd.material, pd.origin, pd.stock, pd.category
              FROM products p
              JOIN product_details pd ON p.id = pd.product_id
              WHERE p.tenant_id = $1
@@ -26,12 +26,12 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
     const client = await pool.connect();
     try {
         const currentTenantId = req.tenant_id;
-        const { name, price, description, material, origin, stock, category } = req.body;
+        const { name, sku, price, description, material, origin, stock, category } = req.body;
 
         await client.query('BEGIN');
 
         const productRes = await client.query(
-            'INSERT INTO products (tenant_id, name) VALUES ($1, $2) RETURNING id', [currentTenantId, name]
+            'INSERT INTO products (tenant_id, name, sku) VALUES ($1, $2, $3) RETURNING id', [currentTenantId, name, sku]
         );
         const productId = productRes.rows[0].id;
 
@@ -61,12 +61,12 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
     try {
         const currentTenantId = req.tenant_id;
         const { id } = req.params;
-        const { name, price, description, material, origin, stock, category } = req.body;
+        const { name, sku, price, description, material, origin, stock, category } = req.body;
 
         await client.query('BEGIN');
 
         await client.query(
-            'UPDATE products SET name = $1 WHERE id = $2 AND tenant_id = $3', [name, id, currentTenantId]
+            'UPDATE products SET name = $1, sku = $2 WHERE id = $3 AND tenant_id = $4', [name, sku, id, currentTenantId]
         );
 
         const result = await client.query(
