@@ -12,7 +12,7 @@ import PublicStore from './pages/PublicStore';
 import SystemLogin from './pages/SystemLogin';
 import SystemDashboard from './pages/SystemDashboard';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 const bankId = import.meta.env.VITE_BANK_ID || 'TPBank';
 const bankAcc = import.meta.env.VITE_BANK_ACC || '00001234567';
 
@@ -804,14 +804,18 @@ function POSPage() {
                  {/* [NEW] Form nhập thông tin khách hàng cho cashier
                      Trước đây hard-code 'khachang@demo.com', bây giờ cashier có thể nhập tên/email thật */}
                  <div className="border-t border-zinc-50 pt-6 mb-4 space-y-3">
-                   <input
-                     type="text" placeholder="Tên khách hàng"
+                    <label htmlFor="cashier-customer-name" className="sr-only">Tên khách hàng</label>
+                    <input
+                      id="cashier-customer-name"
+                      type="text" placeholder="Tên khách hàng"
                      className="w-full bg-[#F9FAFB] rounded-xl px-4 py-3 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
                      value={customerInput.name}
                      onChange={e => setCustomerInput(p => ({...p, name: e.target.value}))}
                    />
-                   <input
-                     type="email" placeholder="Email (tùy chọn)"
+                    <label htmlFor="cashier-customer-email" className="sr-only">Email (tùy chọn)</label>
+                    <input
+                      id="cashier-customer-email"
+                      type="email" placeholder="Email (tùy chọn)"
                      className="w-full bg-[#F9FAFB] rounded-xl px-4 py-3 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
                      value={customerInput.email}
                      onChange={e => setCustomerInput(p => ({...p, email: e.target.value}))}
@@ -1116,11 +1120,11 @@ function POSPage() {
                 <div>
                   <h3 id="modal-checkout-title" className="text-xl font-bold text-[#333333] mb-6">Thông tin khách hàng</h3>
                   <div className="grid grid-cols-1 gap-4">
-                    <label htmlFor="checkout-phone" className="sr-only">Số điện thoại khách hàng</label>
+                    <label htmlFor="checkout-email" className="sr-only">Email khách hàng</label>
                     <input
-                      id="checkout-phone"
-                      type="text" placeholder="Số điện thoại"
-                      aria-label="Số điện thoại khách hàng"
+                      id="checkout-email"
+                      type="email" placeholder="Email khách hàng"
+                      aria-label="Email khách hàng"
                       className="w-full bg-[#F9FAFB] rounded-xl px-5 py-4 text-sm outline-none border border-zinc-100 focus:border-[#8FA08A]"
                       value={customerInput.email} 
                       onChange={e => setCustomerInput(p => ({...p, email: e.target.value}))}

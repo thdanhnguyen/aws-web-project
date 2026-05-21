@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -44,16 +44,10 @@ export default function Login() {
         <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-[#8FA08A]/20"></div>
         <div className="absolute top-1/2 right-0 w-48 h-48 rounded-full bg-white/5 translate-x-1/2 -translate-y-1/2"></div>
 
-        {/* Logo */}
         <div className="flex items-center gap-4 z-10">
           <img src="/logo.png" alt="MEKIE" className="w-12 h-12 rounded-2xl shadow-lg shadow-black/10" />
-          <span className="font-black text-xl tracking-tight">
-            <span className="text-[#4285F4]">M</span>
-            <span className="text-[#EA4335]">E</span>
-            <span className="text-[#FBBC05]">K</span>
-            <span className="text-[#4285F4]">I</span>
-            <span className="text-[#34A853]">E</span>
-            <span className="text-zinc-300 ml-1 font-medium tracking-normal">POS</span>
+          <span className="font-black text-xl tracking-tight text-white">
+            MEKIE<span className="text-[#8FA08A] ml-1 font-medium tracking-normal">POS</span>
           </span>
         </div>
 
@@ -83,16 +77,10 @@ export default function Login() {
       <div className="flex-1 bg-[#FBFBF9] flex items-center justify-center p-8">
         <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
 
-          {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3 mb-12">
             <img src="/logo.png" alt="MEKIE" className="w-10 h-10 rounded-xl shadow-sm" />
-            <span className="font-black tracking-tight text-lg">
-              <span className="text-[#4285F4]">M</span>
-              <span className="text-[#EA4335]">E</span>
-              <span className="text-[#FBBC05]">K</span>
-              <span className="text-[#4285F4]">I</span>
-              <span className="text-[#34A853]">E</span>
-              <span className="text-zinc-500 ml-1 font-medium tracking-normal">POS</span>
+            <span className="font-black tracking-tight text-lg text-[#333333]">
+              MEKIE<span className="text-[#8FA08A] ml-1 font-medium tracking-normal">POS</span>
             </span>
           </div>
 
@@ -107,7 +95,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Email</label>
+              <label htmlFor="login-email" className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Email</label>
               <input
                 required
                 type="email"
@@ -119,7 +107,7 @@ export default function Login() {
               />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Mật khẩu</label>
+              <label htmlFor="login-password" className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Mật khẩu</label>
               <input
                 required
                 type="password"

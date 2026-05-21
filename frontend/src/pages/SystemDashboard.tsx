@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const formatDate = (d: string) => d ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
 
@@ -239,16 +239,16 @@ export default function SystemDashboard() {
             <form onSubmit={handleCreate} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Mã Shop (ID) *</label>
-                  <input required type="text" placeholder="sunshine-hn"
+                  <label htmlFor="tenant-id-input" className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Mã Shop (ID) *</label>
+                  <input id="tenant-id-input" required type="text" placeholder="sunshine-hn"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-700 focus:border-amber-400/50 outline-none transition-all"
                     value={form.tenant_id}
                     onChange={e => setForm({ ...form, tenant_id: e.target.value.toLowerCase().replace(/\s/g, '-') })}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Tên Shop *</label>
-                  <input required type="text" placeholder="Sunshine HN"
+                  <label htmlFor="tenant-name-input" className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Tên Shop *</label>
+                  <input id="tenant-name-input" required type="text" placeholder="Sunshine HN"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-700 focus:border-amber-400/50 outline-none transition-all"
                     value={form.tenant_name}
                     onChange={e => setForm({ ...form, tenant_name: e.target.value })}
@@ -257,8 +257,8 @@ export default function SystemDashboard() {
               </div>
 
               <div>
-                <label className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Tên Admin</label>
-                <input type="text" placeholder="Nguyễn Văn A"
+                <label htmlFor="admin-name-input" className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Tên Admin</label>
+                <input id="admin-name-input" type="text" placeholder="Nguyễn Văn A"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-700 focus:border-amber-400/50 outline-none transition-all"
                   value={form.full_name}
                   onChange={e => setForm({ ...form, full_name: e.target.value })}
@@ -266,8 +266,8 @@ export default function SystemDashboard() {
               </div>
 
               <div>
-                <label className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Email Admin *</label>
-                <input required type="email" placeholder="admin@sunshine.com"
+                <label htmlFor="admin-email-input" className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Email Admin *</label>
+                <input id="admin-email-input" required type="email" placeholder="admin@sunshine.com"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-700 focus:border-amber-400/50 outline-none transition-all"
                   value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
@@ -275,8 +275,8 @@ export default function SystemDashboard() {
               </div>
 
               <div>
-                <label className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Mật khẩu Admin *</label>
-                <input required type="password" placeholder="••••••••"
+                <label htmlFor="admin-password-input" className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Mật khẩu Admin *</label>
+                <input id="admin-password-input" required type="password" placeholder="••••••••"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-700 focus:border-amber-400/50 outline-none transition-all"
                   value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
@@ -284,8 +284,8 @@ export default function SystemDashboard() {
               </div>
 
               <div>
-                <label className="text-[10px] uppercase tracking-widest text-amber-500 mb-2 block font-bold">Access Code (Mã mời Staff) *</label>
-                <input required type="text" placeholder="Mã bảo mật để Admin mời Staff vào shop"
+                <label htmlFor="access-code-input" className="text-[10px] uppercase tracking-widest text-amber-500 mb-2 block font-bold">Access Code (Mã mời Staff) *</label>
+                <input id="access-code-input" required type="text" placeholder="Mã bảo mật để Admin mời Staff vào shop"
                   className="w-full bg-amber-400/5 border border-amber-400/20 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-700 focus:border-amber-400/50 outline-none transition-all"
                   value={form.access_code}
                   onChange={e => setForm({ ...form, access_code: e.target.value })}

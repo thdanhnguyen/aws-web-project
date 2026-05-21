@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 const bankId = import.meta.env.VITE_BANK_ID || 'Vietcombank';
 const bankAcc = import.meta.env.VITE_BANK_ACC || '1035968622';
 
@@ -143,7 +143,9 @@ export default function PublicStore() {
         <div className="flex-1">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-14">
              <h2 className="text-5xl font-light italic tracking-tighter text-[#333333]">Collection</h2>
+             <label htmlFor="search-public" className="sr-only">Tìm sản phẩm</label>
              <input 
+                 id="search-public"
                  type="text" 
                  placeholder="Tìm món hàng..." 
                  className="bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-soft w-full lg:w-72 font-medium"
@@ -188,9 +190,15 @@ export default function PublicStore() {
             </div>
             
             <form onSubmit={handleCheckout} className="pt-10 border-t border-zinc-50 space-y-6">
-               <div className="grid grid-cols-1 gap-4">
-                  <input required placeholder="Tên của sếp" className="w-full bg-[#F9FAFB] border border-zinc-50 rounded-2xl px-6 py-4 text-sm focus:border-[#8FA08A] outline-none" value={customerInfo.name} onChange={e => setCustomerInfo({...customerInfo, name: e.target.value})} />
-                  <input required type="email" placeholder="Email nhận hóa đơn" className="w-full bg-[#F9FAFB] border border-zinc-50 rounded-2xl px-6 py-4 text-sm focus:border-[#8FA08A] outline-none" value={customerInfo.email} onChange={e => setCustomerInfo({...customerInfo, email: e.target.value})} />
+               <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label htmlFor="customer-name-input" className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Tên của sếp *</label>
+                    <input id="customer-name-input" required placeholder="Nhập tên..." className="w-full bg-[#F9FAFB] border border-zinc-50 rounded-2xl px-6 py-4 text-sm focus:border-[#8FA08A] outline-none" value={customerInfo.name} onChange={e => setCustomerInfo({...customerInfo, name: e.target.value})} />
+                  </div>
+                  <div>
+                    <label htmlFor="customer-email-input" className="text-[10px] uppercase tracking-widest text-zinc-400 mb-2 block font-bold">Email nhận hóa đơn *</label>
+                    <input id="customer-email-input" required type="email" placeholder="VD: sep@gmail.com" className="w-full bg-[#F9FAFB] border border-zinc-50 rounded-2xl px-6 py-4 text-sm focus:border-[#8FA08A] outline-none" value={customerInfo.email} onChange={e => setCustomerInfo({...customerInfo, email: e.target.value})} />
+                  </div>
                </div>
 
                <div className="space-y-3 pt-4">

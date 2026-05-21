@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export default function SystemLogin() {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -54,11 +54,7 @@ export default function SystemLogin() {
           <img src="/logo.png" alt="MEKIE" className="w-16 h-16 rounded-3xl mx-auto mb-5 shadow-2xl shadow-amber-400/30 bg-white p-1" />
           <h1 className="text-3xl font-light text-white tracking-tight mb-2">Hệ Thống Tổng</h1>
           <p className="text-zinc-500 text-xs uppercase tracking-widest font-bold">
-            <span className="text-[#4285F4]">M</span>
-            <span className="text-[#EA4335]">E</span>
-            <span className="text-[#FBBC05]">K</span>
-            <span className="text-[#4285F4]">I</span>
-            <span className="text-[#34A853]">E</span>
+            <span className="text-white">MEKIE</span>
             <span className="ml-1 text-zinc-400">SUPER ADMIN</span>
           </p>
         </div>
@@ -71,7 +67,7 @@ export default function SystemLogin() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Email</label>
+            <label htmlFor="system-email" className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Email</label>
             <input
               required type="email" id="system-email"
               placeholder="superadmin@mekie.com"
@@ -81,7 +77,7 @@ export default function SystemLogin() {
             />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Mật khẩu</label>
+            <label htmlFor="system-password" className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 block font-bold">Mật khẩu</label>
             <input
               required type="password" id="system-password"
               placeholder="••••••••"

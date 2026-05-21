@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Trang này là "Hệ thống tổng" — chỉ dùng để tạo Shop Admin mới
 // URL: /register (không hiển thị trên giao diện user thông thường)
