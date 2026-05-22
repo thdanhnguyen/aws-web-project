@@ -40,7 +40,7 @@ app.get('/', (_req: Request, res: Response) => {
   });
 });
 
-app.get('/api/healthcheck', (_req: Request, res: Response) => {
+app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
