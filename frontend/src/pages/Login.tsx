@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -137,7 +137,16 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="text-center mt-8 text-[10px] text-zinc-300 uppercase tracking-widest">MEKIE POS — Multi-tenant SaaS</p>
+          <div className="mt-8 pt-6 border-t border-zinc-100 flex items-center justify-between">
+            <p className="text-xs text-zinc-400">Chưa có tài khoản?</p>
+            <Link
+              to="/register"
+              id="go-to-register"
+              className="text-xs font-bold text-[#8FA08A] hover:text-[#4A5D45] transition-colors tracking-wide"
+            >
+              Gia nhập Shop →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

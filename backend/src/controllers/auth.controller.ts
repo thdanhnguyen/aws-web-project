@@ -8,41 +8,57 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 const JWT_SECRET = process.env.JWT_SECRET || 'SUPER_SECRET_KEY_2026';
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'SUPER_REFRESH_SECRET_2026';
 
-// Đăng ký — người đầu tiên tạo shop = admin, người join sau = staff
+/**
+ * POST /api/auth/register
+ * Dành riêng cho Nhân viên (Staff) tự gia nhập Shop bằng mã mời.
+ * Việc tạo Shop mới được thực hiện bởi Super Admin qua endpoint /api/system/tenants.
+ */
 export const register = async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
-    const { tenant_id, tenant_name, email, password, access_code, full_name } = req.body;
-    const emailDomain = email.split('@')[1];
+    const { tenant_id, email, password, access_code, full_name } = req.body;
+
+    if (!tenant_id || !email || !password || !access_code) {
+      throw AppError.badRequest('Vui lòng điền đầy đủ thông tin bắt buộc');
+    }
 
     await client.query('BEGIN');
 
-    const tenantCheck = await client.query('SELECT * FROM tenants WHERE domain = $1', [emailDomain]);
-    let finalTenantId = tenant_id;
-    let role = 'staff';
-
-    if (tenantCheck.rowCount !== 0) {
-      const existingTenant = tenantCheck.rows[0];
-      if (existingTenant.access_code !== access_code) {
-        throw AppError.forbidden('Mã bảo mật không đúng. Vui lòng liên hệ chủ Shop!');
-      }
-      finalTenantId = existingTenant.id;
-    } else {
-      role = 'admin'; // Tạo shop mới → người đăng ký là admin
-      await client.query(
-        'INSERT INTO tenants (id, name, domain, access_code) VALUES ($1, $2, $3, $4)',
-        [tenant_id, tenant_name, emailDomain, access_code]
-      );
+    // 1. Kiểm tra shop có tồn tại không
+    const tenantRes = await client.query(
+      'SELECT id, access_code FROM tenants WHERE id = $1',
+      [tenant_id]
+    );
+    if (tenantRes.rowCount === 0) {
+      throw AppError.notFound('Mã Shop không tồn tại. Vui lòng kiểm tra lại.');
     }
 
+    // 2. Đối chiếu access_code (mã mời nhân viên)
+    const tenant = tenantRes.rows[0];
+    if (tenant.access_code !== access_code) {
+      throw AppError.forbidden('Mã mời nhân viên không đúng. Vui lòng liên hệ chủ Shop!');
+    }
+
+    // 3. Kiểm tra email chưa bị đăng ký
+    const emailCheck = await client.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (emailCheck.rowCount !== 0) {
+      throw AppError.conflict('Email này đã được đăng ký. Vui lòng dùng email khác.');
+    }
+
+    // 4. Tạo tài khoản nhân viên (role = staff luôn)
     const passwordHash = await bcrypt.hash(password, 10);
     const userRes = await client.query(
       'INSERT INTO users (tenant_id, email, password_hash, role, full_name) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, tenant_id, role, full_name',
-      [finalTenantId, email, passwordHash, role, full_name || email.split('@')[0]]
+      [tenant.id, email, passwordHash, 'staff', full_name || email.split('@')[0]]
     );
 
     await client.query('COMMIT');
-    res.status(201).json({ success: true, message: 'Đăng ký thành công!', data: userRes.rows[0] });
+    return res.status(201).json({
+      success: true,
+      message: 'Gia nhập shop thành công! Bạn có thể đăng nhập ngay.',
+      data: userRes.rows[0]
+    });
+
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
