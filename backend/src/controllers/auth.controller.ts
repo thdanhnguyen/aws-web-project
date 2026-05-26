@@ -26,7 +26,7 @@ export const register = async (req: Request, res: Response) => {
 
     // 1. Kiểm tra shop có tồn tại không
     const tenantRes = await client.query(
-      'SELECT id, access_code FROM tenants WHERE id = $1',
+      'SELECT id, access_code FROM tenants WHERE LOWER(id) = LOWER($1)',
       [tenant_id]
     );
     if (tenantRes.rowCount === 0) {
