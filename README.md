@@ -37,7 +37,7 @@ A multi-tenant, web-based Point-of-Sale (POS) SaaS application built for modern 
 | **Auth** | JWT (jsonwebtoken), bcryptjs, cookie-parser |
 | **Email** | Nodemailer (SMTP / AWS SES) |
 | **Payment** | SePay API — VietQR IPN Webhook |
-| **Infrastructure** | AWS (EC2, RDS, S3, CloudFront, Route 53, SES, IAM, Secrets Manager) |
+| **Infrastructure** | AWS (EC2, RDS, S3, CloudFront, SES, IAM, Secrets Manager) |
 | **Dev Tools** | tsx (hot-reload), ESLint, Git |
 
 ---
