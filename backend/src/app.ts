@@ -7,6 +7,8 @@ import authRoutes from './routes/auth.routes';
 import publicRoutes from './routes/public.routes';
 import shiftRoutes from './routes/shift.routes';
 import systemRoutes from './routes/system.routes';
+import customerRoutes from './routes/customer.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 import {
   requestLogger,
   securityHeaders,
@@ -54,6 +56,8 @@ app.use('/api/products', productRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use(notFoundHandler);
 app.use(globalErrorHandler);

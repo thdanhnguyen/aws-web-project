@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import {
   ShoppingCart, History, Clock, LayoutDashboard,
   Package, Users, LogOut, Search, Plus, Minus, X,
-  Loader2, PanelLeftOpen, PanelLeftClose
+  Loader2, PanelLeftOpen, PanelLeftClose, UserSquare
 } from 'lucide-react';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -46,7 +46,9 @@ const formatVietnamTime = (dateStr: string) => {
 };
 
 function POSPage() {
-  const [activeView, setActiveView] = useState<'dashboard' | 'sell' | 'history' | 'warehouse' | 'shift' | 'staff'>('sell');
+  const [activeView, setActiveView] = useState<'dashboard' | 'sell' | 'history' | 'warehouse' | 'shift' | 'staff' | 'customers'>('sell');
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [cart, setCart] = useState<any[]>([]);
@@ -101,6 +103,7 @@ function POSPage() {
           { view: 'dashboard', adminOnly: true },
           { view: 'warehouse', adminOnly: true },
           { view: 'staff', adminOnly: true },
+          { view: 'customers', adminOnly: true },
         ].filter(item => !item.adminOnly || user?.role === 'admin');
 
         const key = parseInt(e.key);
@@ -120,10 +123,10 @@ function POSPage() {
     return products.filter((p: any) => p.name.toLowerCase().includes(lowerQuery) || (p.price && p.price.toString().includes(lowerQuery)));
   }, [debouncedQuery, products]);
 
-  // 📊 Dashboard Aggregations (Computed on-the-fly)
+  // 📊 Computed on-the-fly for history view fallback
   const totalRevenue = useMemo(() => history.reduce((sum, item) => sum + parseFloat(item.total_amount), 0), [history]);
   const totalOrders = history.length;
-  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
   const recentOrders = useMemo(() => [...history].slice(0, 5), [history]);
 
   const refreshAccessToken = useCallback(async () => {
@@ -199,6 +202,18 @@ function POSPage() {
     if (payload.success) setAllShifts(payload.data);
   }, [fetchWithAuth]);
 
+  const fetchDashboardStats = useCallback(async () => {
+    const res = await fetchWithAuth(`${API_URL}/dashboard/stats`);
+    const payload = await res.json();
+    if (payload.success) setDashboardStats(payload.data);
+  }, [fetchWithAuth]);
+
+  const fetchCustomers = useCallback(async () => {
+    const res = await fetchWithAuth(`${API_URL}/customers`);
+    const payload = await res.json();
+    if (payload.success) setCustomers(payload.data);
+  }, [fetchWithAuth]);
+
   useEffect(() => {
     const storedUser = localStorage.getItem('pos_user');
     if (storedUser) setUser(JSON.parse(storedUser));
@@ -218,6 +233,8 @@ function POSPage() {
   useEffect(() => {
     if (activeView === 'history' || activeView === 'dashboard') fetchHistory();
     if (activeView === 'warehouse' || activeView === 'sell') fetchProducts();
+    if (activeView === 'dashboard') fetchDashboardStats();
+    if (activeView === 'customers') fetchCustomers();
     if (activeView === 'shift') {
       fetchCurrentShift();
       // fetchAllShifts chỉ gọi cho admin — staff không có quyền
@@ -226,7 +243,7 @@ function POSPage() {
     }
     if (activeView === 'staff') fetchStaff();
     setSearchQuery('');
-  }, [activeView, fetchHistory, fetchProducts, fetchCurrentShift, fetchStaff, fetchAllShifts]);
+  }, [activeView, fetchHistory, fetchProducts, fetchCurrentShift, fetchStaff, fetchAllShifts, fetchDashboardStats, fetchCustomers]);
 
   const handleLogout = async () => {
     await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
@@ -478,6 +495,7 @@ function POSPage() {
             { view: 'shift',     icon: <Clock size={18} />,       label: 'Ca Làm',      ariaLabel: 'Quản lý ca làm',      adminOnly: false },
             { view: 'warehouse', icon: <Package size={18} />,    label: 'Sản Phẩm',    ariaLabel: 'Xem danh sách sản phẩm', adminOnly: false },
             { view: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Tổng Quan', ariaLabel: 'Tổng quan doanh thu', adminOnly: true },
+            { view: 'customers', icon: <UserSquare size={18} />, label: 'Khách Hàng', ariaLabel: 'Quản lý khách hàng', adminOnly: true },
             { view: 'staff',     icon: <Users size={18} />,       label: 'Nhân Viên',   ariaLabel: 'Quản lý nhân viên',   adminOnly: true },
           ] as const).filter(item => !item.adminOnly || user?.role === 'admin').map((item, index) => (
             <button
@@ -665,21 +683,21 @@ function POSPage() {
         )}
 
         {/* VIEW: DASHBOARD */}
-        {activeView === 'dashboard' && (
+        {activeView === 'dashboard' && dashboardStats && (
           <div className="animate-in slide-in-from-bottom-10 duration-500">
              <header className="mb-14"><h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Tổng Quan</h2></header>
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-14">
                 <div className="bg-white rounded-[3rem] p-10 border border-zinc-100 shadow-soft relative overflow-hidden flex flex-col justify-center">
                    <div className="text-[10px] uppercase font-black tracking-widest text-[#8FA08A] mb-4">Tổng Doanh Thu</div>
-                   <div className="text-3xl font-black">{formatVND(totalRevenue)}</div>
+                   <div className="text-3xl font-black">{formatVND(dashboardStats.totalRevenue)}</div>
                 </div>
                 <div className="bg-white rounded-[3rem] p-10 border border-zinc-100 shadow-soft relative overflow-hidden flex flex-col justify-center">
                    <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-4">Tổng Đơn Hàng</div>
-                   <div className="text-3xl font-black">{totalOrders} <span className="text-xs uppercase text-zinc-400 tracking-normal ml-1">đơn</span></div>
+                   <div className="text-3xl font-black">{dashboardStats.totalOrders} <span className="text-xs uppercase text-zinc-400 tracking-normal ml-1">đơn</span></div>
                 </div>
                 <div className="bg-[#333333] text-white rounded-[3rem] p-10 border border-zinc-800 shadow-xl relative overflow-hidden flex flex-col justify-center">
                    <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-4">Giá Trị Trung Bình</div>
-                   <div className="text-3xl font-black text-[#8FA08A]">{formatVND(avgOrderValue)}</div>
+                   <div className="text-3xl font-black text-[#8FA08A]">{formatVND(dashboardStats.totalOrders > 0 ? dashboardStats.totalRevenue / dashboardStats.totalOrders : 0)}</div>
                 </div>
              </div>
              <div>
@@ -701,6 +719,31 @@ function POSPage() {
                     </table>
                 </div>
              </div>
+          </div>
+        )}
+
+        {/* VIEW: CUSTOMERS */}
+        {activeView === 'customers' && (
+          <div className="animate-in slide-in-from-bottom-10 duration-500">
+            <header className="mb-14"><h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Khách Hàng</h2></header>
+            <div className="bg-white rounded-[3rem] border border-zinc-100 shadow-soft overflow-hidden">
+               <table className="w-full text-left text-sm">
+                 <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-widest font-black text-zinc-400">
+                    <tr><th className="p-8">Tên Khách Hàng</th><th className="p-8">Email</th><th className="p-8">Điện Thoại</th><th className="p-8 text-right">Ngày Tạo</th></tr>
+                 </thead>
+                 <tbody className="divide-y divide-zinc-50">
+                    {customers.map((c: any) => (
+                      <tr key={c.id} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="p-8 font-bold">{c.name}</td>
+                        <td className="p-8 text-zinc-400">{c.email || '—'}</td>
+                        <td className="p-8 text-zinc-400">{c.phone || '—'}</td>
+                        <td className="p-8 text-right text-zinc-400">{formatVietnamTime(c.created_at)}</td>
+                      </tr>
+                    ))}
+                    {customers.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-zinc-400 italic text-xs">Chưa có khách hàng</td></tr>}
+                 </tbody>
+               </table>
+            </div>
           </div>
         )}
 
