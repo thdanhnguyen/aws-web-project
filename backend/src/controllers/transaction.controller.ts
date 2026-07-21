@@ -17,7 +17,7 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     await client.query('BEGIN');
 
     let customerRes = await client.query(
-      'SELECT id FROM customers WHERE email = $1 AND tenant_id = $2', 
+      'SELECT id, name FROM customers WHERE email = $1 AND tenant_id = $2', 
       [customer_email, currentTenantId]
     );
     let customerId;
@@ -26,8 +26,17 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
         'INSERT INTO customers (tenant_id, name, email) VALUES ($1, $2, $3) RETURNING id',
         [currentTenantId, customer_name || customer_email.split('@')[0], customer_email]
       );
+      customerId = customerRes.rows[0].id;
+    } else {
+      customerId = customerRes.rows[0].id;
+      // Update the customer name if it has changed
+      if (customer_name && customer_name.trim() !== '' && customer_name !== customerRes.rows[0].name) {
+        await client.query(
+          'UPDATE customers SET name = $1 WHERE id = $2',
+          [customer_name, customerId]
+        );
+      }
     }
-    customerId = customerRes.rows[0].id;
 
     let subtotal = 0;
     const detailedItems = [];

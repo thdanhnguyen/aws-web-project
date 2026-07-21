@@ -433,7 +433,7 @@ function POSPage() {
     });
   };
 
-  if (loading) return <div className="min-h-screen bg-[#FBFBF9] flex items-center justify-center font-inter uppercase tracking-widest text-zinc-400 text-xs"><Loader2 className="animate-spin mr-2" size={16} />Authenticating...</div>;
+  if (loading) return <div className="min-h-screen bg-[#FBFBF9] flex items-center justify-center font-inter uppercase tracking-widest text-zinc-400 text-xs"><Loader2 className="animate-spin mr-2" size={16} />Đang tải...</div>;
 
   return (
     <div className="min-h-screen bg-[#FBFBF9] text-[#333333] font-inter flex overflow-hidden w-full">
@@ -556,7 +556,7 @@ function POSPage() {
                   <div><p className="text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Nhân viên</p><p className="font-black">{currentShift.full_name || currentShift.email}</p></div>
                 </div>
                 <button onClick={handleCloseShift} className="w-full bg-[#333333] text-white py-5 rounded-2xl uppercase text-[10px] font-black tracking-widest hover:bg-black transition-all active:scale-[0.98]">
-                  Đóng Ca &amp; Tổng Kết
+                  Đóng Ca
                 </button>
               </div>
             ) : (
@@ -568,7 +568,7 @@ function POSPage() {
                     <input type="number" min="0" placeholder="VD: 2000000" className="w-full bg-[#F9FAFB] border border-zinc-100 rounded-xl px-4 py-4 text-sm focus:border-[#8FA08A] outline-none" value={openingCash} onChange={e => setOpeningCash(e.target.value)} />
                   </div>
                   <button type="submit" className="w-full bg-[#8FA08A] text-white py-5 rounded-2xl uppercase text-[10px] font-black tracking-widest shadow-lg shadow-[#8FA08A]/20 hover:shadow-xl transition-all">
-                    Xác Nhận Mở Ca
+                    Mở Ca
                   </button>
                 </form>
               </div>
@@ -667,23 +667,23 @@ function POSPage() {
         {/* VIEW: DASHBOARD */}
         {activeView === 'dashboard' && (
           <div className="animate-in slide-in-from-bottom-10 duration-500">
-             <header className="mb-14"><h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Dashboard</h2></header>
+             <header className="mb-14"><h2 className="text-5xl font-light text-[#333333] tracking-tight italic">Tổng Quan</h2></header>
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-14">
                 <div className="bg-white rounded-[3rem] p-10 border border-zinc-100 shadow-soft relative overflow-hidden flex flex-col justify-center">
-                   <div className="text-[10px] uppercase font-black tracking-widest text-[#8FA08A] mb-4">Total Revenue</div>
+                   <div className="text-[10px] uppercase font-black tracking-widest text-[#8FA08A] mb-4">Tổng Doanh Thu</div>
                    <div className="text-3xl font-black">{formatVND(totalRevenue)}</div>
                 </div>
                 <div className="bg-white rounded-[3rem] p-10 border border-zinc-100 shadow-soft relative overflow-hidden flex flex-col justify-center">
-                   <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-4">Total Orders</div>
+                   <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-4">Tổng Đơn Hàng</div>
                    <div className="text-3xl font-black">{totalOrders} <span className="text-xs uppercase text-zinc-400 tracking-normal ml-1">đơn</span></div>
                 </div>
                 <div className="bg-[#333333] text-white rounded-[3rem] p-10 border border-zinc-800 shadow-xl relative overflow-hidden flex flex-col justify-center">
-                   <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-4">Avg Order Value</div>
+                   <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 mb-4">Giá Trị Trung Bình</div>
                    <div className="text-3xl font-black text-[#8FA08A]">{formatVND(avgOrderValue)}</div>
                 </div>
              </div>
              <div>
-                <h3 className="text-2xl font-light italic mb-8">Recent Transactions</h3>
+                <h3 className="text-2xl font-light italic mb-8">Giao Dịch Gần Đây</h3>
                 <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-soft overflow-hidden">
                     <table className="w-full text-left">
                       <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-[0.2em] font-black text-zinc-400"><tr><th className="p-6 lg:p-8">Mã Đơn</th><th className="p-6 lg:p-8">Khách Hàng</th><th className="p-6 lg:p-8">Thời Gian</th><th className="p-6 lg:p-8 text-right">Tổng Tiền</th></tr></thead>
@@ -711,9 +711,9 @@ function POSPage() {
                <Clock size={48} aria-hidden="true" />
              </div>
              <h2 className="text-3xl font-light italic mb-4">Chưa Mở Ca</h2>
-             <p className="text-sm text-zinc-500 mb-8 leading-relaxed">Bạn cần phải xác nhận mở ca làm việc trước khi có thể thực hiện chức năng bán hàng.</p>
+             <p className="text-sm text-zinc-500 mb-8 leading-relaxed">Bạn cần mở ca trước khi bán hàng.</p>
              <button onClick={() => setActiveView('shift')} className="bg-[#8FA08A] text-white px-8 py-4 rounded-2xl uppercase text-[10px] font-black tracking-widest shadow-lg shadow-[#8FA08A]/20 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">
-               Đi tới Mở Ca
+               Mở Ca
              </button>
           </div>
         )}
@@ -722,14 +722,14 @@ function POSPage() {
           <div className="animate-in fade-in duration-500 flex flex-col xl:flex-row h-full gap-6 lg:gap-10">
             <div className="flex-1">
                 <header className="mb-10 lg:mb-14 border-b border-zinc-100 pb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-                   <h2 className="text-5xl font-light italic text-[#333333]">Storefront</h2>
+                   <h2 className="text-5xl font-light italic text-[#333333]">Sản Phẩm</h2>
                    <label htmlFor="search-sell" className="sr-only">Tìm sản phẩm theo tên</label>
                    <div className="relative w-full lg:w-72">
                      <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
                      <input 
                         id="search-sell"
                         type="text" 
-                        placeholder="Tìm món hàng..." 
+                        placeholder="Tìm kiếm..." 
                         aria-label="Tìm sản phẩm theo tên"
                         className="pl-10 bg-white border border-zinc-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#8FA08A] shadow-sm w-full font-medium"
                         value={searchQuery}
@@ -772,7 +772,7 @@ function POSPage() {
 
             {/* Panel Giỏ hàng + Thông tin khách hàng */}
             <div className="w-full xl:w-[400px] bg-white rounded-[3rem] p-6 lg:p-10 shadow-2xl flex flex-col border border-zinc-50 h-fit sticky top-0 z-10 mx-auto xl:mx-0">
-                 <h3 className="text-2xl font-light italic mb-6">Cart</h3>
+                 <h3 className="text-2xl font-light italic mb-6">Giỏ Hàng</h3>
                  <div className="flex-1 space-y-3 max-h-[320px] overflow-y-auto pr-2 mb-4">
                     {cart.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-3 text-sm border-b border-zinc-50 pb-3">
@@ -823,9 +823,9 @@ function POSPage() {
                  </div>
 
                  <div className="space-y-3">
-                    <div className="flex justify-between text-xs text-zinc-400"><span>Subtotal</span><span className="font-bold">{formatVND(subtotal)}</span></div>
-                    <div className="flex justify-between text-xs text-zinc-400"><span>Tax (10%)</span><span className="font-bold">{formatVND(tax)}</span></div>
-                    <div className="flex justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-50"><span>Total</span><span className="text-xl font-black text-[#8FA08A]">{formatVND(total)}</span></div>
+                    <div className="flex justify-between text-xs text-zinc-400"><span>Tạm tính</span><span className="font-bold">{formatVND(subtotal)}</span></div>
+                    <div className="flex justify-between text-xs text-zinc-400"><span>Thuế (10%)</span><span className="font-bold">{formatVND(tax)}</span></div>
+                    <div className="flex justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-50"><span>Tổng tiền</span><span className="text-xl font-black text-[#8FA08A]">{formatVND(total)}</span></div>
                     <button onClick={handleOpenCheckoutModal} className="w-full bg-[#8FA08A] text-white font-bold py-5 rounded-[1.5rem] shadow-xl shadow-[#8FA08A]/20 uppercase tracking-widest text-[10px] active:scale-95 transition-all">Thanh toán</button>
                  </div>
             </div>
@@ -1097,7 +1097,7 @@ function POSPage() {
                     disabled={(activeProduct.stock ?? 0) <= 0}
                     className="w-full bg-[#333333] text-white py-5 rounded-2xl uppercase text-[10px] tracking-widest hover:bg-black transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#333333] disabled:active:scale-100"
                   >
-                    {(activeProduct.stock ?? 0) > 0 ? 'Add to cart' : 'Hết hàng'}
+                    {(activeProduct.stock ?? 0) > 0 ? 'Thêm vào giỏ' : 'Hết hàng'}
                   </button>
               </div>
            </div>
